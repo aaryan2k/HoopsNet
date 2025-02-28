@@ -4,7 +4,7 @@
 
 Adding dependencies like React-Router-Dom and Bootstrap
 
-`npm install react-router-dom bootstrap @types/react-router-dom`
+`npm install react-router-dom bootstrap @types/react-router-dom react-bootstrap`
 
 Don't forget to add this line to src/App.tsx to use bootstrap
 
