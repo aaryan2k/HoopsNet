@@ -16,6 +16,6 @@ Over the past 10 years, 16 out of the past 20 NBA finalists ranked top 5 in 2p%,
  from the 3 point line. It's clear that three point percentage isn't necessarily the main factor for winning, and that
  the midrange game is still important in the playoffs. 
 
- We will be using 2p%, FG%, 3P, eFG%, Net RTG, margin of victory, offensive rating, percentage at the rim, and 
+ We will be using 2p%, FG%, 3P, 3P%, eFG%, Net RTG, margin of victory, offensive rating, percentage at the rim, and 
  percentage from 16 ft - 3 pt line in our model to predict the NBA champion. 
 '''
