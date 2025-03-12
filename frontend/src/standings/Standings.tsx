@@ -1,6 +1,7 @@
 import Main from './index'
 
 const Standings = () => {
+
   return (
     <Main/>
   )
