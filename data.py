@@ -24,7 +24,7 @@ percenatge of 16ft to 3 --> ShotLocations(Mid-Range_FG_PCT)
 '''
 
 
-# years = ["2013-14", "2014-15", "2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24"]
+# years = ["2004-05", "2005-06", "2006-07", "2007-08", "2008-09"]
 # for year in years:
 #     #deals with the advanced stats listed above
 #     #need to obtain the differnet columns that I need
@@ -79,5 +79,5 @@ percenatge of 16ft to 3 --> ShotLocations(Mid-Range_FG_PCT)
 #     final_df.to_csv(f"{year}_team_stats.csv", index=False)
 
 
-#finished gathering data for the last 10 years based on our statistics into csvs will move onto making the model next week
-#will store all csvs in a folder called data
+# #finished gathering data for the last 10 years based on our statistics into csvs will move onto making the model next week
+# #will store all csvs in a folder called team_stats
