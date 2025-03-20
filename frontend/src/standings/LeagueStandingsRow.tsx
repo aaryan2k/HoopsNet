@@ -1,3 +1,4 @@
+import Image from "react-bootstrap/Image";
 
 interface NBAStandings {
   index: number
@@ -12,13 +13,14 @@ interface NBAStandings {
   lastTen: string;
 }
 
-const StandingsRow = ({nbaStandings}: {nbaStandings: NBAStandings}) => {  
+const StandingsRow = ({nbaStandings}: {nbaStandings: NBAStandings}) => {
+  const icon = `/icons/${nbaStandings.name}.png`;  
   return (
     <tr>
         <td>{nbaStandings.index}</td>
-            {/* <td>
-                { <Image src={icon} width="35" height="35"/> }
-            </td> */}
+            <td>
+                { <Image src={icon} width="45" height="45"/> }
+            </td>
         <td>{nbaStandings.city + " " + nbaStandings.name}</td>
         <td>{nbaStandings.conference}</td>
         <td>{nbaStandings.clinchIndicator}</td>

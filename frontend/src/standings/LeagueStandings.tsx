@@ -1,14 +1,11 @@
-// import Container from 'react-bootstrap/Container'
 import { useLoaderData} from "react-router-dom";
-import StandingsRow from "./StandingsRow";
+import StandingsRow from "./LeagueStandingsRow";
 import "./Standings.css";
 
-const Main = () => {
+const LeagueStandings = () => {
 
   const standings = useLoaderData();
-  console.log(standings);
   const nbaStandings = standings[0];
-  console.log(nbaStandings);
 
   if (nbaStandings.length === 0) {
     return(
@@ -29,6 +26,7 @@ const Main = () => {
           <thead className="table-light">
             <tr>
               <th>Rank</th>
+              <th></th>
               <th>Team</th>
               <th>Conference</th>
               <th>Clinched</th>
@@ -46,8 +44,12 @@ const Main = () => {
           </tbody>
         </table>
       </div>
+      <p>
+        Legend: -x - Clinched playoff berth, -o - Out of Playoffs, -c - Clinched Central Division, -nw - Clinched Northwest Division, 
+        -sw - Clinched Southwest Division, -p - Clinched Pacific Division, -se - Clinched Southeast Division, -a - Clinched Atlantic Division
+      </p>
     </div>
   )
 }
 
-export default Main
+export default LeagueStandings

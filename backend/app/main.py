@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from nba_api.stats.endpoints import LeagueDashPlayerStats, LeagueStandings
-# from nba_api.stats.static import teams
 # import datetime
 
 app = FastAPI()
