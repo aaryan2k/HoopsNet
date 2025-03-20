@@ -46,8 +46,7 @@ const LeagueStandings = () => {
         </table>
       </div>
       <p>
-        Legend: -x - Clinched playoff berth, -o - Out of Playoffs, -c - Clinched Central Division, -nw - Clinched Northwest Division, 
-        -sw - Clinched Southwest Division, -p - Clinched Pacific Division, -se - Clinched Southeast Division, -a - Clinched Atlantic Division
+        Legend: -x - Clinched playoff berth, -o - Out of Playoffs, -e - Clinched Eastern Conference, -c - Clinched Central Division, -se - Clinched Southeast Division, -a - Clinched Atlantic Division
       </p>
     </div>
   )
