@@ -1,4 +1,4 @@
-.carousel-item {
+/* .carousel-item {
     max-height: 40rem;
     max-width: 100vw;
     background-size: cover;
@@ -7,8 +7,43 @@
     box-shadow: inset 0 0 0 100vw rgba(0,0,0,0.3);
     width: 100%;
     height: 100%;
-  }
+  } */
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 
-  .custom-background{
-    background-color: #FFFFFF;
+.custom-background{
+  background-color: #FFFFFF;
+}
+
+html, body, #root, .App {
+  background-color: #000;
+  height: 100%;
+  margin: 0;
   }
+  
+  /* Carousel wrapper = full viewport minus navbar */
+.carousel {
+  height: calc(100vh - 56px);
+}
+
+  /* Each slide & image stretch/cover */
+ /* Carousel = full height under a 56px navbar */
+.carousel-item {
+  height: calc(100vh - 56px);
+}
+
+/* Every slide image covers its column without distortion */
+.carousel-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.quote-text {
+  font-family: 'Great Vibes', serif;
+  font-style: italic;
+  font-size: 2rem;
+  color: #fff;
+  max-width: 80%;
+  margin: 1.5rem 0;
+  line-height: 1.3;
+}
