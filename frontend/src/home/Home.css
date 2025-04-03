@@ -8,25 +8,28 @@
     width: 100%;
     height: 100%;
   } */
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap");
 
-.custom-background{
-  background-color: #FFFFFF;
+.custom-background {
+  background-color: #ffffff;
 }
 
-html, body, #root, .App {
+html,
+body,
+#root,
+.App {
   background-color: #000;
   height: 100%;
   margin: 0;
-  }
-  
-  /* Carousel wrapper = full viewport minus navbar */
+}
+
+/* Carousel wrapper = full viewport minus navbar */
 .carousel {
   height: calc(100vh - 56px);
 }
 
-  /* Each slide & image stretch/cover */
- /* Carousel = full height under a 56px navbar */
+/* Each slide & image stretch/cover */
+/* Carousel = full height under a 56px navbar */
 .carousel-item {
   height: calc(100vh - 56px);
 }
@@ -39,7 +42,7 @@ html, body, #root, .App {
 }
 
 .quote-text {
-  font-family: 'Great Vibes', serif;
+  font-family: "Great Vibes", serif;
   font-style: italic;
   font-size: 2rem;
   color: #fff;
@@ -49,7 +52,7 @@ html, body, #root, .App {
 }
 
 .myRedLink {
-    background-color: red !important;
-    border-color: red !important;
-    color: white !important;
+  background-color: red !important;
+  border-color: red !important;
+  color: white !important;
 }

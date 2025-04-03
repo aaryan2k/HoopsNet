@@ -1,9 +1,7 @@
-import Main from './index'
+import Main from "./index";
 
 const Home = () => {
-  return (
-    <Main/>
-  )
-}
+  return <Main />;
+};
 
-export default Home
+export default Home;
