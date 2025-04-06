@@ -15,6 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Define the allowed stats for filtering
 STAT_OPTIONS = {"PTS", "AST", "REB", "STL", "BLK", "TOV", "FG_PCT", "FT_PCT", "FG3_PCT"}
 
 @app.get("/")
@@ -37,7 +38,9 @@ async def get_nba_standings():
         "ROAD": "road",
         "L10": "lastTen"
     })
+    # Order by highest win percentage
     df = df.sort_values(by=["winPct"], ascending=False).reset_index(drop=True)
+    # Resetting index so it can be used in the frontend and starting from 1 instead of 0
     df["index"] = df.index + 1
     return df.to_dict(orient="records")
 
