@@ -115,15 +115,15 @@ num_features = X_train.shape[2]
 # print(f"Average top-3 accuracy: {avg_top3:.4f}")
 # model.save("nba_model.h5")
 
-test_champion_indices = [9, 7, 1]  
+# test_champion_indices = [9, 7, 1]  
 nba_model = keras.models.load_model("nba_model.h5")
 
 
-test_path = "test_data"
-X_test = load_data(test_path)
-Y_test = make_y_train(test_champion_indices)
+# test_path = "test_data"
+# X_test = load_data(test_path)
+# Y_test = make_y_train(test_champion_indices)
 
-results = nba_model.evaluate(X_test, Y_test, verbose=1)
+# results = nba_model.evaluate(X_test, Y_test, verbose=1)
 
 TEAM_NAMES = [
     "ATL", "BOS", "BKN", "CHA", "CHI", "CLE", "DAL", "DEN",
@@ -132,9 +132,14 @@ TEAM_NAMES = [
     "POR", "SAC", "SAS", "TOR", "UTA", "WAS"
 ]
 
-print(f"\nTest Loss: {results[0]:.4f}")
-print(f"Test Accuracy: {results[1]:.4f}")
-print(f"Top-3 Accuracy: {results[2]:.4f}")
+# print(f"\nTest Loss: {results[0]:.4f}")
+# print(f"Test Accuracy: {results[1]:.4f}")
+# print(f"Top-3 Accuracy: {results[2]:.4f}")
+
+# load real test data
+real_path = "real_data"
+
+X_test = load_data(real_path)
 
 probs = nba_model.predict(X_test, verbose=0)
 
