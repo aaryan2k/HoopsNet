@@ -10,6 +10,11 @@ Don't forget to add this line to src/App.tsx to use bootstrap
 
 `import 'bootstrap/dist/css/bootstrap.min.css';`
 
+
+# Activating venv 
+
+`source .venv/bin/activate`
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
