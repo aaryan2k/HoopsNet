@@ -1,0 +1,14 @@
+.custom-background{
+    background-color: #FFFFFF;
+  }
+
+.jumbotron-results {
+    background: url('./curry.jpg') no-repeat fixed;
+    background-size: cover;
+    height: 50rem;
+}
+
+h1 {
+    font-size: 3rem;
+    color: #FFFFFF;
+}
