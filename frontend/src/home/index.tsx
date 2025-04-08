@@ -3,48 +3,55 @@ import {
   Box,
   Flex,
   Image,
-  Heading,
-  Text,
   Button,
   useBreakpointValue,
+  Link,
 } from "@chakra-ui/react";
-import { NavLink } from "react-router-dom";
 
 import { CrossFadeBackground } from "./CrossFadeBackground";
 
+import kobeHighlightImage from "./Highlight-transparent.png";
 import kobe1 from "./kobe_background.jpg";
-import kobe2 from "./kobe_2.jpg"; // second image
-import highlightImage from "./Highlight.png";
-import carousel3 from "./jordan.jpg";
-import carousel4 from "./carousel4.jpg";
+import kobe2 from "./kobe-bryant.jpg"; // second image
+import kobe3 from "./mamba-mentality.jpeg"; // second image
+
+import jordanHighlightImage from "./red-highlight.png";
+import jordan1 from "./jordan-dunking.jpg";
+import jordan2 from "./air-jordan.jpg";
+import jordan3 from "./jordan-jumper.jpg";
+
+import lebronHighlightImage from "./lebron-highlight.png";
+import lebron1 from "./lebron-dunking.jpg";
+import lebron2 from "./lebron-chalk.jpg";
+import lebron3 from "./lebron-celtics.jpg";
 
 const slides = [
   {
     key: 0,
     layout: "hero",
-    heading: "The Black Mamba",
+    heading: "See standings",
     text: "Click below to view current NBA standings.",
     buttonText: "See Standings",
-    link: "/standings",
-    images: [kobe1, kobe2],
+    link: "/standings/#standings",
+    images: [kobe1, kobe2, kobe3],
   },
   {
     key: 1,
-    layout: "split",
-    heading: "Welcome to HoopsNet",
+    layout: "hero",
+    heading: "See Player Stats",
     text: "Click below to view current player statistics.",
     buttonText: "Player Stats",
-    link: "/stats",
-    image: carousel3,
+    link: "/standings/#stats",
+    images: [jordan1, jordan2, jordan3],
   },
   {
-    key: 2,
-    layout: "fullImage",
-    heading: "Prediction",
-    text: "",
-    buttonText: "AI Prediction",
-    link: "/prediction",
-    image: carousel4,
+    key: 3,
+    layout: "hero",
+    heading: "See AI Prediction",
+    text: "Click below to view current player statistics.",
+    buttonText: "Player Stats",
+    link: "/standings/#prediction",
+    images: [lebron1, lebron2, lebron3],
   },
 ];
 
@@ -77,133 +84,75 @@ export default function Main() {
           height="100%"
           position="relative"
         >
-          {slide.layout === "hero" ? (
-            <Box position="relative" width="100%" height="100%">
-              {/* Background container */}
-              <Box
-                position="absolute"
-                top="0"
-                left="0"
-                width="100%"
-                height="100%"
-                zIndex={0}
-              >
-                <CrossFadeBackground
-                  images={slide.images ? slide.images : []}
-                  duration={4000}
-                  fadeTime={1000}
-                />
-              </Box>
+          <Box position="relative" width="100%" height="100%">
+            {/* Background container */}
+            <Box
+              position="absolute"
+              top="0"
+              left="0"
+              width="100%"
+              height="100%"
+              zIndex={0}
+            >
+              <CrossFadeBackground
+                images={slide.images ? slide.images : []}
+                duration={4000}
+                fadeTime={1000}
+              />
+            </Box>
 
-              {/* Text container */}
+            {/* Centered Text Container */}
+            <Flex
+              position="absolute" // changed to absolute for full centering
+              top="50%"
+              left="50%"
+              transform="translate(-50%, -50%)"
+              zIndex={1}
+              direction="column"
+              justify="center"
+              align="center"
+              textAlign="center" // ensures text is centered inside the container
+              px={4}
+            >
+              {/* Highlight container */}
               <Flex
                 position="relative"
-                zIndex={1}
-                direction="column"
-                justify="center"
-                align="center" // center horizontally
-                h="100%"
-                maxW="600px"
-                mx={{ base: 4, md: 16 }}
-              >
-                {/* Highlight container */}
-                <Flex
-                  position="relative"
-                  align="center"
-                  justify="center"
-                  w={{ base: "300px", md: "500px" }}
-                  h={{ base: "130px", md: "180px" }}
-                  mb={4}
-                >
-                  <Image
-                    src={highlightImage}
-                    alt="Highlight"
-                    objectFit="contain"
-                    w="100%"
-                    h="100%"
-                  />
-                  <Text
-                    position="absolute"
-                    color="black"
-                    fontSize={{ base: "3xl", md: "5xl" }}
-                    fontWeight="bold"
-                    textAlign="center"
-                    px={4}
-                  >
-                    {slide.heading}
-                  </Text>
-                </Flex>
-
-                <Text color="white" fontSize={{ base: "md", md: "xl" }} mb={6}>
-                  {slide.text}
-                </Text>
-
-                <Button as={NavLink} colorScheme="yellow" size="lg">
-                  <a href={slide.link}>{slide.buttonText}</a>
-                </Button>
-              </Flex>
-            </Box>
-          ) : slide.layout === "split" ? (
-            // SPLIT LAYOUT: Text on the left, image on the right.
-            <Flex direction={{ base: "column", md: "row" }} height="100%">
-              <Flex
-                flex="1"
-                direction="column"
-                justify="center"
-                p={{ base: 4, md: 10 }}
-                bg="blackAlpha.600"
-              >
-                <Heading color="white" mb={4}>
-                  {slide.heading}
-                </Heading>
-                <Text color="white" mb={4}>
-                  {slide.text}
-                </Text>
-                <Button as={NavLink} colorScheme="yellow" size="lg">
-                  <a href={slide.link}>{slide.buttonText}</a>
-                </Button>
-              </Flex>
-              <Box flex="1">
-                <Image
-                  src={slide.image}
-                  alt={slide.heading}
-                  objectFit="cover"
-                  width="100%"
-                  height="100%"
-                />
-              </Box>
-            </Flex>
-          ) : (
-            // FULLIMAGE LAYOUT: Full background image with centered overlay caption.
-            <Box position="relative" width="100%" height="100%">
-              <Image
-                src={slide.image}
-                alt={slide.heading}
-                objectFit="cover"
-                width="100%"
-                height="100%"
-              />
-              <Flex
-                position="absolute"
-                top="0"
-                left="0"
-                width="100%"
-                height="100%"
                 align="center"
                 justify="center"
-                bg="rgba(0,0,0,0.5)"
-                direction="column"
-                p={4}
+                w={{ base: "300px", md: "500px" }}
+                h={{ base: "130px", md: "180px" }}
+                mb={4}
               >
-                <Heading color="white" mb={4}>
+                <Image
+                  src={
+                    slide.key === 0
+                      ? kobeHighlightImage
+                      : slide.key === 1
+                        ? jordanHighlightImage
+                        : lebronHighlightImage
+                  }
+                  alt="Highlight"
+                  objectFit="contain"
+                  w="100%"
+                  h="100%"
+                />
+                <Link
+                  href={slide.link}
+                  position="absolute"
+                  color="black"
+                  fontSize={{ base: "3xl", md: "5xl" }}
+                  fontWeight="bold"
+                  textAlign="center"
+                  px={4}
+                  fontFamily="cursive"
+                  _hover={{ textDecoration: "underline" }}
+                >
                   {slide.heading}
-                </Heading>
-                <Button as={NavLink} colorScheme="blue" size="lg">
-                  <a href={slide.link}>{slide.buttonText}</a>
-                </Button>
+                </Link>
+                {/* </Text> */}
               </Flex>
-            </Box>
-          )}
+            </Flex>
+          </Box>
         </Box>
       ))}
 
