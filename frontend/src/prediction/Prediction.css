@@ -1,3 +1,41 @@
-h1 {
-    color:aqua;
-}
+
+.prediction-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f4f4f4; /* optional light background */
+  }
+  
+  .button-container {
+    position: relative;
+  }
+  
+  .load-button {
+    background-color: #b8860b;
+    color: black;
+    font-weight: 600;
+    font-size: 1.3rem;       /* Increased font size */
+    padding: 16px 32px;      /* More padding for a larger button */
+    border: none;
+    border-radius: 10px;     /* Slightly more rounded */
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Stronger shadow */
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .load-button:hover {
+    background-color: #a87400;
+    transform: scale(1.05); /* Grows slightly on hover */
+  }
+  
+  .hover-icon {
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 48px;
+    height: 48px;
+    transition: opacity 0.3s ease;
+  }
+  
