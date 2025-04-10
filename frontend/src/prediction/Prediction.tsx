@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./Prediction.css";
 import trophy from "./trophy.png";
+import west_bracket from "./west_bracket.png";
 
 const Predictions: React.FC = () => {
   const [hovered, setHovered] = useState(false);
@@ -34,8 +35,12 @@ const Predictions: React.FC = () => {
           >
             {loading ? "Loading..." : "Load AI Model"}
           </button>
+
         )}
       </div>
+      {showBackground && (
+        <img src={west_bracket} className="bracket-image-west" alt="Bracket" />
+      )}
     </div>
   );
 };

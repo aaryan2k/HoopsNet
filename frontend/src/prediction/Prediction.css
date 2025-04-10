@@ -47,3 +47,18 @@
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
+
+
+.bracket-image-west {
+  position: absolute;
+  top: 55%;
+  left: 2%;
+  transform: translateY(-50%);
+  height: 80vh;         /* adjust as needed */
+  width: auto;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+}
+
+
