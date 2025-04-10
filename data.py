@@ -1,83 +1,113 @@
-import numpy as np
+import os
 import pandas as pd
-import tensorflow as tf
-
+import numpy as np
 from nba_api.stats.endpoints import leaguedashteamstats as team
 from nba_api.stats.endpoints import leaguedashteamshotlocations as shootingAdv
 from nba_api.stats.endpoints import leaguedashteamptshot as shooting
 
-'''
-What we wanna use as our models weights
+def gather_nba_data(seasons, output_folder):
+    """
+    Gathers NBA team stats for each season in `seasons` using nba_api
+    and writes them as CSV files to `output_folder`.
+    Each output CSV includes:
+      - TEAM_ID
+      - TEAM_NAME
+      - EFG_PCT
+      - NET_RATING
+      - TS_PCT_RANK
+      - OFF_RATING
+      - MARGIN_OF_VICTORY (PLUS_MINUS)
+      - Restricted Area_FG_PCT
+      - Mid-Range_FG_PCT
+      - FG3_PCT
+    """
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
+    for year in seasons:
+        print(f"Gathering data for season {year}...")
+        
+        # ----------------------------------
+        # 1. Advanced stats (EFG_PCT, NET_RATING, TS_PCT_RANK, OFF_RATING)
+        # ----------------------------------
+        advanced_stats = team.LeagueDashTeamStats(
+            season=year,
+            measure_type_detailed_defense="Advanced",
+            season_type_all_star="Regular Season"
+        ).get_data_frames()[0]
+        
+        df_advanced = advanced_stats[[
+            'TEAM_ID', 'TEAM_NAME',
+            'EFG_PCT', 'NET_RATING', 'TS_PCT_RANK', 'OFF_RATING'
+        ]].copy()
+        
+        # ----------------------------------
+        # 2. Base/traditional stats for margin of victory (PLUS_MINUS)
+        # ----------------------------------
+        base_stats = team.LeagueDashTeamStats(
+            season=year,
+            measure_type_detailed_defense="Base",
+            season_type_all_star="Regular Season"
+        ).get_data_frames()[0]
+        
+        # We only need TEAM_ID, PLUS_MINUS from the base stats
+        df_base = base_stats[['TEAM_ID', 'PLUS_MINUS']].copy()
+        
+        # ----------------------------------
+        # 3. Shot location stats (Restricted Area_FG_PCT, Mid-Range_FG_PCT)
+        # ----------------------------------
+        df_shot_loc = shootingAdv.LeagueDashTeamShotLocations(
+            season=year,
+            season_type_all_star="Regular Season"
+        ).get_data_frames()[0]
+        
+        # Depending on naming in nba_api, these columns might be:
+        # 'RESTRICTED_AREA_FG_PCT' and 'MID_RANGE_FG_PCT'
+        # Double-check your data structure after pulling once or print head.
+        df_shot_loc = df_shot_loc[[
+            'TEAM_ID',
+            'RESTRICTED_AREA_FG_PCT',
+            'MID_RANGE_FG_PCT'
+        ]].copy()
+        
+        # ----------------------------------
+        # 4. 3PT stats (FG3_PCT)
+        # ----------------------------------
+        df_shot_3pt = shooting.LeagueDashTeamPtShot(
+            season=year,
+            season_type_all_star="Regular Season"
+        ).get_data_frames()[0]
+        
+        df_shot_3pt = df_shot_3pt[['TEAM_ID', 'FG3_PCT']].copy()
+        
+        # ----------------------------------
+        # Merge everything
+        # ----------------------------------
+        df_merged = pd.merge(df_advanced, df_base, on='TEAM_ID', how='left')
+        df_merged = pd.merge(df_merged, df_shot_loc, on='TEAM_ID', how='left')
+        df_merged = pd.merge(df_merged, df_shot_3pt, on='TEAM_ID', how='left')
+        
+        # Rename columns to match your desired naming
+        df_merged.rename(columns={
+            'PLUS_MINUS': 'MARGIN_OF_VICTORY',
+            'RESTRICTED_AREA_FG_PCT': 'Restricted Area_FG_PCT',
+            'MID_RANGE_FG_PCT': 'Mid-Range_FG_PCT'
+        }, inplace=True)
+        
+        # ----------------------------------
+        # Save as CSV
+        # ----------------------------------
+        csv_filename = f"{year}_team_stats.csv"
+        output_path = os.path.join(output_folder, csv_filename)
+        df_merged.to_csv(output_path, index=False)
+        
+        print(f"Saved {output_path}")
 
-TEAMID  --> Advanced (TEAM_ID)
-TEAMNAME  --> Advanced (TEAM_NAME)
-
-
-Effective shooting percentage -->Advanced (EFG_PCT)
-net rating -->Advanced (NET_RATING)
-margin of victory  --> teamDashBoard (PLUS_MINUS)
-offensive rating --> Advanced (OFF_RATING)
-percetnage of rim --> ShotLocations(Restricted Area_FG_PCT)
-percenatge of 16ft to 3 --> ShotLocations(Mid-Range_FG_PCT)
-3pt percentage --> 
-'''
-
-
-# years = ["2004-05", "2005-06", "2006-07", "2007-08", "2008-09"]
-# for year in years:
-#     #deals with the advanced stats listed above
-#     #need to obtain the differnet columns that I need
-#     advanced_stats = team.LeagueDashTeamStats(season=year, measure_type_detailed_defense="Advanced")
-#     df_advanced = advanced_stats.get_data_frames()[0]
-
-
-
-#     #deals with the ShotLocation stats obtained above. Can extract as numpy array
-#     adv_shot_data = shootingAdv.LeagueDashTeamShotLocations(
-#         season=year,
-#         season_type_all_star="Regular Season"
-#     )
-#     df_adv_shooting = adv_shot_data.get_data_frames()[0]
-#     df_adv_shooting.columns = ['_'.join(col).strip() for col in df_adv_shooting.columns]
-#     df_adv_shooting = df_adv_shooting[[ "Restricted Area_FG_PCT", "Mid-Range_FG_PCT"]]
-
-
-
-#     #deals with 3pt shooting mentioned above
-#     shot_data = shooting.LeagueDashTeamPtShot(
-#         season=year,
-#         season_type_all_star="Regular Season"
-#     )
-
-#     df_shot_data = shot_data.get_data_frames()[0]
-
-
-#     #todo: grab all necessary columns into dataframe and export as csv
-#     team_id = df_advanced['TEAM_ID']
-#     team_name = df_advanced['TEAM_NAME']
-#     efg_pct = df_advanced['EFG_PCT']
-#     net_rating = df_advanced['NET_RATING']
-#     ts_pct_rank = df_advanced['TS_PCT_RANK']
-#     off_rating = df_advanced['OFF_RATING']
-#     percentage_of_rim = df_adv_shooting['Restricted Area_FG_PCT']
-#     percentage_of_16ft_to_3 = df_adv_shooting['Mid-Range_FG_PCT']
-#     three_pt_percentage = df_shot_data['FG3_PCT']
-
-#     final_df = pd.DataFrame({
-#         'TEAM_ID': team_id,
-#         'TEAM_NAME': team_name,
-#         'EFG_PCT': efg_pct,
-#         'NET_RATING': net_rating,
-#         'TS_PCT_RANK': ts_pct_rank,
-#         'OFF_RATING': off_rating,
-#         'Restricted Area_FG_PCT': percentage_of_rim,
-#         'Mid-Range_FG_PCT': percentage_of_16ft_to_3,
-#         'FG3_PCT': three_pt_percentage
-#     })
-
-#     final_df.to_csv(f"{year}_team_stats.csv", index=False)
-
-
-# #finished gathering data for the last 10 years based on our statistics into csvs will move onto making the model next week
-# #will store all csvs in a folder called team_stats
+# Example usage for older 5 seasons
+if __name__ == "__main__":
+    train_years = ["2004-05", "2005-06", "2006-07", "2007-08", "2008-09"]
+    gather_nba_data(train_years, output_folder="train_data")
+    
+    # If you have future seasons for testing, do similarly:
+    # test_years = ["2021-22", "2022-23", ...]
+    # gather_nba_data(test_years, output_folder="test_data")

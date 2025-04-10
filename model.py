@@ -52,77 +52,92 @@ print(Y_train.shape)
 num_features = X_train.shape[2]
 
 def build_cnn_model(input_shape, num_classes):
-    """Builds a CNN model with multiple convolution blocks."""
-    model = keras.Sequential()
-    model.add(layers.Input(shape=input_shape))
+    """Deeper CNN model with residual connections and more layers."""
+    inputs = keras.Input(shape=input_shape)
     
-    # First convolution block
-    model.add(layers.Conv1D(64, kernel_size=3, padding='same'))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.2))
+    x = layers.Conv1D(64, kernel_size=3, padding='same')(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
     
-    # Second convolution block
-    model.add(layers.Conv1D(128, kernel_size=3, padding='same'))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.2))
+    # Residual Block 1
+    residual = x
+    x = layers.Conv1D(128, kernel_size=3, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.Conv1D(128, kernel_size=3, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.add([x, residual])  # Add residual connection
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.Dropout(0.3)(x)
+
+    # Residual Block 2
+    residual = x
+    x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.add([x, residual])  # Add residual connection
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.Dropout(0.4)(x)
     
-    # Third convolution block with a different kernel size
-    model.add(layers.Conv1D(256, kernel_size=5, padding='same'))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.3))
-    
-    # Fourth convolution block
-    model.add(layers.Conv1D(256, kernel_size=3, padding='same'))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dropout(0.3))
-    
-    # Flatten and Dense layers
-    model.add(layers.Flatten())
-    model.add(layers.Dense(512))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.Dropout(0.4))
-    model.add(layers.Dense(256))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.Dropout(0.3))
-    
-    # Output layer
-    model.add(layers.Dense(num_classes, activation='softmax'))
+    # Final convolution
+    x = layers.Conv1D(512, kernel_size=1, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
+    x = layers.Dropout(0.4)(x)
+
+    x = layers.Flatten()(x)
+    x = layers.Dense(512, activation='relu')(x)
+    x = layers.Dropout(0.4)(x)
+    outputs = layers.Dense(num_classes, activation='softmax')(x)
+
+    model = keras.Model(inputs, outputs)
     return model
+
 
 def build_lstm_model(input_shape, num_classes):
-    """Builds an LSTM-based model for sequence learning."""
+    """Deeper LSTM model with bidirectional LSTM and more dense layers."""
     model = keras.Sequential()
     model.add(layers.Input(shape=input_shape))
-    
-    # LSTM layers - return sequences to stack more LSTMs
-    model.add(layers.LSTM(128, return_sequences=True))
-    model.add(layers.Dropout(0.3))
-    model.add(layers.LSTM(128))
-    model.add(layers.Dropout(0.3))
-    
-    # Dense layers for classification
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Dropout(0.4))
-    model.add(layers.Dense(num_classes, activation='softmax'))
-    return model
 
-def build_dense_model(input_shape, num_classes):
-    """Builds a fully connected (dense) model. The input is first flattened."""
-    model = keras.Sequential()
-    model.add(layers.Input(shape=input_shape))
-    model.add(layers.Flatten())
+    # Stacked Bidirectional LSTMs
+    model.add(layers.Bidirectional(layers.LSTM(128, return_sequences=True)))
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Bidirectional(layers.LSTM(128)))
+    model.add(layers.Dropout(0.3))
+
+    # Dense layers
     model.add(layers.Dense(512, activation='relu'))
     model.add(layers.Dropout(0.4))
     model.add(layers.Dense(256, activation='relu'))
     model.add(layers.Dropout(0.3))
     model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dropout(0.2))
+    
     model.add(layers.Dense(num_classes, activation='softmax'))
     return model
+
+
+def build_dense_model(input_shape, num_classes):
+    """Deeper fully connected model with more units and layers."""
+    model = keras.Sequential()
+    model.add(layers.Input(shape=input_shape))
+    model.add(layers.Flatten())
+
+    # Deep dense layers
+    model.add(layers.Dense(1024, activation='relu'))
+    model.add(layers.Dropout(0.4))
+    model.add(layers.Dense(512, activation='relu'))
+    model.add(layers.Dropout(0.4))
+    model.add(layers.Dense(256, activation='relu'))
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dropout(0.2))
+
+    model.add(layers.Dense(num_classes, activation='softmax'))
+    return model
+
 
 # -------------------------------------------------------------------
 # Load Data
