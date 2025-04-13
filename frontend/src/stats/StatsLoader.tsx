@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const StatsLoader = async({ params }: any) => {
-  const { value } = params;
-  let nbaStatsUrl = `http://localhost:8000/nba-stats?stat=${value}`;
+  const { stat } = params;
+  let nbaStatsUrl = `http://localhost:8000/nba-stats?stat=${stat}`;
   const stats = await Promise.all([
     axios.get(nbaStatsUrl).then(response => response.data)
   ]);
