@@ -1,113 +1,78 @@
-import os
-import pandas as pd
+from __future__ import annotations
+import os, time
+from pathlib import Path
+from typing import Iterable, List
+
 import numpy as np
-from nba_api.stats.endpoints import leaguedashteamstats as team
-from nba_api.stats.endpoints import leaguedashteamshotlocations as shootingAdv
-from nba_api.stats.endpoints import leaguedashteamptshot as shooting
+import pandas as pd
+from nba_api.stats.endpoints import (
+    leaguedashteamstats as _stats,
+    leaguedashteamshotlocations as _locs,
+    leaguedashteamptshot as _pt,
+)
 
-def gather_nba_data(seasons, output_folder):
-    """
-    Gathers NBA team stats for each season in `seasons` using nba_api
-    and writes them as CSV files to `output_folder`.
-    Each output CSV includes:
-      - TEAM_ID
-      - TEAM_NAME
-      - EFG_PCT
-      - NET_RATING
-      - TS_PCT_RANK
-      - OFF_RATING
-      - MARGIN_OF_VICTORY (PLUS_MINUS)
-      - Restricted Area_FG_PCT
-      - Mid-Range_FG_PCT
-      - FG3_PCT
-    """
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+# ------------------------- feature subsets -------------------------- #
+_ADV = ["TEAM_ID", "EFG_PCT", "NET_RATING", "TS_PCT_RANK", "OFF_RATING"]
+_MISC = ["TEAM_ID", "PACE", "PIE", "AST_TOV", "OREB_PCT", "FTA_RATE"]
+_OPP4 = ["TEAM_ID", "OPP_EFG_PCT", "OPP_FTA_RATE", "OPP_TOV_PCT", "OPP_OREB_PCT"]
+_FORM_SUFFIX = "_LAST_20"     # will be appended for rolling‑window pulls
+_SHOOT = ["TEAM_ID", "RESTRICTED_AREA_FG_PCT",
+          "MID_RANGE_FG_PCT", "FG3_PCT"]
 
-    for year in seasons:
-        print(f"Gathering data for season {year}...")
-        
-        # ----------------------------------
-        # 1. Advanced stats (EFG_PCT, NET_RATING, TS_PCT_RANK, OFF_RATING)
-        # ----------------------------------
-        advanced_stats = team.LeagueDashTeamStats(
-            season=year,
-            measure_type_detailed_defense="Advanced",
-            season_type_all_star="Regular Season"
-        ).get_data_frames()[0]
-        
-        df_advanced = advanced_stats[[
-            'TEAM_ID', 'TEAM_NAME',
-            'EFG_PCT', 'NET_RATING', 'TS_PCT_RANK', 'OFF_RATING'
-        ]].copy()
-        
-        # ----------------------------------
-        # 2. Base/traditional stats for margin of victory (PLUS_MINUS)
-        # ----------------------------------
-        base_stats = team.LeagueDashTeamStats(
-            season=year,
-            measure_type_detailed_defense="Base",
-            season_type_all_star="Regular Season"
-        ).get_data_frames()[0]
-        
-        # We only need TEAM_ID, PLUS_MINUS from the base stats
-        df_base = base_stats[['TEAM_ID', 'PLUS_MINUS']].copy()
-        
-        # ----------------------------------
-        # 3. Shot location stats (Restricted Area_FG_PCT, Mid-Range_FG_PCT)
-        # ----------------------------------
-        df_shot_loc = shootingAdv.LeagueDashTeamShotLocations(
-            season=year,
-            season_type_all_star="Regular Season"
-        ).get_data_frames()[0]
-        
-        # Depending on naming in nba_api, these columns might be:
-        # 'RESTRICTED_AREA_FG_PCT' and 'MID_RANGE_FG_PCT'
-        # Double-check your data structure after pulling once or print head.
-        df_shot_loc = df_shot_loc[[
-            'TEAM_ID',
-            'RESTRICTED_AREA_FG_PCT',
-            'MID_RANGE_FG_PCT'
-        ]].copy()
-        
-        # ----------------------------------
-        # 4. 3PT stats (FG3_PCT)
-        # ----------------------------------
-        df_shot_3pt = shooting.LeagueDashTeamPtShot(
-            season=year,
-            season_type_all_star="Regular Season"
-        ).get_data_frames()[0]
-        
-        df_shot_3pt = df_shot_3pt[['TEAM_ID', 'FG3_PCT']].copy()
-        
-        # ----------------------------------
-        # Merge everything
-        # ----------------------------------
-        df_merged = pd.merge(df_advanced, df_base, on='TEAM_ID', how='left')
-        df_merged = pd.merge(df_merged, df_shot_loc, on='TEAM_ID', how='left')
-        df_merged = pd.merge(df_merged, df_shot_3pt, on='TEAM_ID', how='left')
-        
-        # Rename columns to match your desired naming
-        df_merged.rename(columns={
-            'PLUS_MINUS': 'MARGIN_OF_VICTORY',
-            'RESTRICTED_AREA_FG_PCT': 'Restricted Area_FG_PCT',
-            'MID_RANGE_FG_PCT': 'Mid-Range_FG_PCT'
-        }, inplace=True)
-        
-        # ----------------------------------
-        # Save as CSV
-        # ----------------------------------
-        csv_filename = f"{year}_team_stats.csv"
-        output_path = os.path.join(output_folder, csv_filename)
-        df_merged.to_csv(output_path, index=False)
-        
-        print(f"Saved {output_path}")
+_WINCOLS = ["TEAM_ID", "W_PCT"]
+_SRS_COL = ["TEAM_ID", "NET_RATING"]    # good proxy for SRS
 
-# Example usage for older 5 seasons
-if __name__ == "__main__":
-    train_years = ["2004-05", "2005-06", "2006-07", "2007-08", "2008-09"]
-    gather_nba_data(train_years, output_folder="train_data")
-    
-    # If you have future seasons for testing, do similarly:
-    # test_years = ["2021-22", "2022-23", ...]
-    # gather_nba_data(test_years, output_folder="test_data")
+# --------------------------- helpers -------------------------------- #
+def _dash(measure: str, season: str, last20: bool = False) -> pd.DataFrame:
+    """Generic wrapper around LeagueDashTeamStats."""
+    kwargs = dict(season=season,
+                  season_type_all_star="Regular Season",
+                  per_mode_detailed="PerGame",
+                  measure_type_detailed_defense=measure)
+    if last20:
+        kwargs.update(period=0, last_n_games=20)
+    return _stats.LeagueDashTeamStats(**kwargs).get_data_frames()[0]
+
+def _pull_one(season: str) -> pd.DataFrame:
+    t0 = time.time(); print(f"▶ {season}", end=" ", flush=True)
+
+    adv  = _dash("Advanced", season)[_ADV + _WINCOLS]        # +W_PCT
+    misc = _dash("Misc", season)[_MISC]
+    opp4 = _dash("Four Factors", season)[_OPP4]
+    form = _dash("Advanced", season, last20=True)\
+              [[c.replace("_LAST_20","") for c in _ADV]].add_suffix(_FORM_SUFFIX)
+
+    loc  = _locs.LeagueDashTeamShotLocations(season=season,
+                                             season_type_all_star="Regular Season")\
+                .get_data_frames()[0][["TEAM_ID",
+                                        "RESTRICTED_AREA_FG_PCT",
+                                        "MID_RANGE_FG_PCT"]]
+    pt   = _pt.LeagueDashTeamPtShot(season=season,
+                                    season_type_all_star="Regular Season")\
+                .get_data_frames()[0][["TEAM_ID", "FG3_PCT"]]
+
+    df = adv.merge(misc, on="TEAM_ID")\
+            .merge(opp4, on="TEAM_ID")\
+            .merge(form, on="TEAM_ID")\
+            .merge(loc,  on="TEAM_ID")\
+            .merge(pt,   on="TEAM_ID")
+
+    df.rename(columns={"NET_RATING": "SRS"}, inplace=True)   # clarity
+    # PLUS_MINUS no longer needed; SRS is superior
+    print(f"done in {time.time()-t0:.1f}s")
+    return df
+
+def fetch_and_cache(seasons: Iterable[str], cache_dir="train_data") -> None:
+    Path(cache_dir).mkdir(exist_ok=True)
+    for s in seasons:
+        fp = Path(cache_dir)/f"{s}_team_stats.csv"
+        if fp.exists(): continue
+        _pull_one(s).to_csv(fp, index=False)
+
+def load_cached(folder: str) -> np.ndarray:
+    files = sorted(Path(folder).glob("*_team_stats.csv"), key=lambda p: int(p.name[:4]))
+    mats: List[np.ndarray] = []
+    for f in files:
+        df = pd.read_csv(f).drop(columns=["TEAM_ID", "TEAM_NAME"], errors="ignore").fillna(0)
+        mats.append(df.to_numpy(np.float32))
+    return np.asarray(mats, np.float32)

@@ -1,212 +1,161 @@
-import tensorflow as tf
+"""
+Full `model.py` for NBA champion prediction, with enhanced feature set and a choice of three architectures.
+"""
+from __future__ import annotations
+import os
+from pathlib import Path
+from typing import Tuple, List
+
+import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow import keras
 from keras import layers
-from keras.callbacks import ReduceLROnPlateau
-import pandas as pd
-import numpy as np
-import os
-import matplotlib.pyplot as plt
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping
+
+# Local loader of cached features
+from data import load_cached
+
+TRAIN_DIR = "train_data"
+TEST_DIR = "test_data"  
+
+Y_CHAMPIONS = [25, 14, 25, 1, 12, 12, 5, 14, 14,
+               25, 8, 4, 8, 8, 27, 12, 15]
+Y_TEST = [10, 3]
 
 
+print("Loading training data from:", TRAIN_DIR)
+X_train = load_cached(TRAIN_DIR)
+assert X_train.ndim == 3, "Expect shape (seasons, teams, features)"
 
-# df = pd.read_csv("train_data/2004-05_team_stats.csv")
-# df = df.drop(columns=["TEAM_ID", "TEAM_NAME"])
-# df.fillna(0, inplace=True)
-# data = df.to_numpy()
+y_train = keras.utils.to_categorical(Y_CHAMPIONS, num_classes=30)
+N_SEASONS, N_TEAMS, N_FEAT = X_train.shape
+INPUT_SHAPE: Tuple[int, int] = (N_TEAMS, N_FEAT)
+print(f"Train: {N_SEASONS} seasons, {N_TEAMS} teams, {N_FEAT} features each.")
 
-
-
-def load_data(folder_path):
-    data = []
-
-    files = [f for f in os.listdir(folder_path) if f.endswith(".csv")]
-    files.sort(key=lambda name: int(name[:4]))  # Sort chronologically
-
-    for filename in files:
-        full_path = os.path.join(folder_path, filename)
-        df = pd.read_csv(full_path)
-        df = df.drop(columns=["TEAM_ID", "TEAM_NAME"])
-        df.fillna(0, inplace=True)
-        arr = df.to_numpy(dtype='float32')
-        data.append(arr)
-
-    return np.array(data, dtype='float32')
-
-def make_y_train(champion_indices):
-    labels = []
-    for idx in champion_indices:
-        arr = np.zeros(30, dtype='float32')
-        arr[idx] = 1.0
-        labels.append(arr)
-
-    return np.array(labels, dtype='float32')
+X_test, y_test = None, None
+if Path(TEST_DIR).exists():
+    print("Loading test data from:", TEST_DIR)
+    X_test = load_cached(TEST_DIR)
+    y_test = keras.utils.to_categorical(Y_TEST, num_classes=30)
+    print(f"Test: {X_test.shape[0]} seasons available.")
 
 
-
-folder_path = "train_data"
-champion_indices = [25, 14, 25, 1, 12, 12, 5, 14, 14, 25, 8, 4, 8, 8, 27, 12, 15]
-X_train = load_data(folder_path)
-print(X_train.shape)
-Y_train = make_y_train(champion_indices)
-print(Y_train.shape)
-num_features = X_train.shape[2]
-
-def build_cnn_model(input_shape, num_classes):
-    """Deeper CNN model with residual connections and more layers."""
+def cnn_se(input_shape: Tuple[int, int]) -> keras.Model:
+    """Residual CNN with Squeeze‑Excite blocks."""
     inputs = keras.Input(shape=input_shape)
-    
-    x = layers.Conv1D(64, kernel_size=3, padding='same')(inputs)
+    x = layers.Conv1D(96, 3, padding="same")(inputs)
     x = layers.BatchNormalization()(x)
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    
-    # Residual Block 1
-    residual = x
-    x = layers.Conv1D(128, kernel_size=3, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    x = layers.Conv1D(128, kernel_size=3, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.add([x, residual])  # Add residual connection
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    x = layers.Dropout(0.3)(x)
+    x = layers.LeakyReLU(0.1)(x)
 
-    # Residual Block 2
-    residual = x
-    x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.add([x, residual])  # Add residual connection
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    x = layers.Dropout(0.4)(x)
-    
-    # Final convolution
-    x = layers.Conv1D(512, kernel_size=1, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.LeakyReLU(alpha=0.1)(x)
-    x = layers.Dropout(0.4)(x)
+    for filters, drop in [(128, 0.35), (256, 0.35), (512, 0.35)]:
+        skip = x
+        x = layers.Conv1D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(0.1)(x)
+        x = layers.Conv1D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.add([x, skip])
+
+        # Squeeze‑Excite
+        se = layers.GlobalAveragePooling1D()(x)
+        se = layers.Dense(filters // 16, activation="relu")(se)
+        se = layers.Dense(filters, activation="sigmoid")(se)
+        se = layers.Reshape((1, filters))(se)
+        x = layers.multiply([x, se])
+        x = layers.Dropout(drop)(x)
 
     x = layers.Flatten()(x)
-    x = layers.Dense(512, activation='relu')(x)
+    x = layers.Dense(512, activation="relu")(x)
     x = layers.Dropout(0.4)(x)
-    outputs = layers.Dense(num_classes, activation='softmax')(x)
-
-    model = keras.Model(inputs, outputs)
-    return model
+    outputs = layers.Dense(30, activation="softmax")(x)
+    return keras.Model(inputs, outputs, name="CNN_SE")
 
 
-def build_lstm_model(input_shape, num_classes):
-    """Deeper LSTM model with bidirectional LSTM and more dense layers."""
-    model = keras.Sequential()
-    model.add(layers.Input(shape=input_shape))
-
-    # Stacked Bidirectional LSTMs
-    model.add(layers.Bidirectional(layers.LSTM(128, return_sequences=True)))
-    model.add(layers.Dropout(0.3))
-    model.add(layers.Bidirectional(layers.LSTM(128)))
-    model.add(layers.Dropout(0.3))
-
-    # Dense layers
-    model.add(layers.Dense(512, activation='relu'))
-    model.add(layers.Dropout(0.4))
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Dropout(0.3))
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dropout(0.2))
-    
-    model.add(layers.Dense(num_classes, activation='softmax'))
-    return model
+def lstm_stacked(input_shape: Tuple[int, int]) -> keras.Model:
+    """Stacked bidirectional LSTM with dense head."""
+    inputs = keras.Input(shape=input_shape)
+    x = layers.Bidirectional(layers.LSTM(256, return_sequences=True))(inputs)
+    x = layers.Dropout(0.3)(x)
+    x = layers.Bidirectional(layers.LSTM(256))(x)
+    x = layers.Dropout(0.3)(x)
+    for units, drop in [(512, 0.4), (256, 0.3), (128, 0.2)]:
+        x = layers.Dense(units, activation="relu")(x)
+        x = layers.Dropout(drop)(x)
+    outputs = layers.Dense(30, activation="softmax")(x)
+    return keras.Model(inputs, outputs, name="LSTM_Stacked")
 
 
-def build_dense_model(input_shape, num_classes):
-    """Deeper fully connected model with more units and layers."""
-    model = keras.Sequential()
-    model.add(layers.Input(shape=input_shape))
-    model.add(layers.Flatten())
+def mlp_deep(input_shape: Tuple[int, int]) -> keras.Model:
+    """Deep MLP with LayerNorm and GELU activations."""
+    inputs = keras.Input(shape=input_shape)
+    x = layers.Flatten()(inputs)
+    for units, drop in [(2048, 0.4), (1024, 0.4), (512, 0.3), (512, 0.3), (256, 0.2)]:
+        x = layers.Dense(units)(x)
+        x = layers.LayerNormalization()(x)
+        x = layers.Activation("gelu")(x)
+        x = layers.Dropout(drop)(x)
+    outputs = layers.Dense(30, activation="softmax")(x)
+    return keras.Model(inputs, outputs, name="MLP_Deep")
 
-    # Deep dense layers
-    model.add(layers.Dense(1024, activation='relu'))
-    model.add(layers.Dropout(0.4))
-    model.add(layers.Dense(512, activation='relu'))
-    model.add(layers.Dropout(0.4))
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Dropout(0.3))
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dropout(0.2))
+# Map strings to builder functions
+MODEL_BUILDERS = {
+    "cnn_se": cnn_se,
+    "lstm": lstm_stacked,
+    "mlp": mlp_deep,
+}
 
-    model.add(layers.Dense(num_classes, activation='softmax'))
-    return model
+# Choose model: "cnn_se", "lstm", or "mlp"
+CHOSEN = "cnn_se"
+model = MODEL_BUILDERS[CHOSEN](INPUT_SHAPE)
+model.summary(line_length=100)
 
 
-# -------------------------------------------------------------------
-# Load Data
-# -------------------------------------------------------------------
-folder_path = "train_data"
-champion_indices = [25, 14, 25, 1, 12, 12, 5, 14, 14, 25, 8, 4, 8, 8, 27, 12, 15]
-X_train = load_data(folder_path)
-print("X_train shape:", X_train.shape)
-Y_train = make_y_train(champion_indices)
-print("Y_train shape:", Y_train.shape)
-num_features = X_train.shape[2]
-
-# -------------------------------------------------------------------
-# Select and Build a Model
-# -------------------------------------------------------------------
-# You can choose one of these model architectures:
-# model = build_cnn_model((30, num_features), 30)
-# model = build_lstm_model((30, num_features), 30)
-model = build_dense_model((30, num_features), 30)  # Change this line to experiment
-
-model.summary()
-
-# -------------------------------------------------------------------
-# Compile the Model
-# -------------------------------------------------------------------
-optimizer = keras.optimizers.RMSprop(learning_rate=0.001)
 model.compile(
-    optimizer=optimizer,
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
+    optimizer=keras.optimizers.Adam(1e-3),
+    loss="categorical_crossentropy",
+    metrics=["accuracy"],
+)
+callbacks = [
+    ReduceLROnPlateau(monitor="loss", factor=0.5, patience=8, verbose=1),
+    EarlyStopping(monitor="loss", patience=20, restore_best_weights=True),
+]
+history = model.fit(
+    X_train, y_train,
+    epochs=400,
+    batch_size=4,
+    verbose=2,
+    callbacks=callbacks,
 )
 
-# Optional learning rate scheduler
-lr_scheduler = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=1)
+print("\n=== Training performance ===")
+train_loss, train_acc = model.evaluate(X_train, y_train, verbose=0)
+print(f"Final training accuracy: {train_acc:.2%}")
+probs = model.predict(X_train, verbose=0)
+top1 = np.mean(np.argmax(probs, axis=1) == np.argmax(y_train, axis=1))
+top5 = np.mean([
+    np.argmax(y) in p.argsort()[-5:] for p, y in zip(probs, y_train)
+])
+print(f"Top‑1 recall (LOSO proxy): {top1:.2%}")
+print(f"Top‑5 recall: {top5:.2%}")
 
-# -------------------------------------------------------------------
-# Train the Model
-# -------------------------------------------------------------------
-history = model.fit(X_train, Y_train, epochs=100, batch_size=4, verbose=2, callbacks=[lr_scheduler])
+if X_test is not None:
+    print("\n=== Test performance ===")
+    loss_t, acc_t = model.evaluate(X_test, y_test, verbose=0)
+    print(f"Test accuracy: {acc_t:.2%}")
+    probs_t = model.predict(X_test, verbose=0)
+    top1_t = np.mean(np.argmax(probs_t, axis=1) == np.argmax(y_test, axis=1))
+    top5_t = np.mean([
+        np.argmax(y) in p.argsort()[-5:] for p, y in zip(probs_t, y_test)
+    ])
+    print(f"Test Top‑1: {top1_t:.2%}")
+    print(f"Test Top‑5: {top5_t:.2%}")
 
-# -------------------------------------------------------------------
-# Plot Training Accuracy
-# -------------------------------------------------------------------
 plt.figure(figsize=(8, 5))
-plt.plot(history.history['accuracy'], label='Training Accuracy')
-plt.title('Model Accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
+plt.plot(history.history["accuracy"], label="Training Accuracy")
+plt.title(f"{model.name} – Training Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
 plt.legend()
 plt.grid(True)
+plt.tight_layout()
 plt.show()
-
-# -------------------------------------------------------------------
-# Evaluate the Model
-# -------------------------------------------------------------------
-loss, accuracy = model.evaluate(X_train, Y_train, verbose=0)
-print(f"Final training accuracy: {accuracy:.4f}")
-
-predictions = model.predict(X_train)
-top1_correct = 0
-top5_correct = 0
-
-for i, pred in enumerate(predictions):
-    top_5_indices = pred.argsort()[-5:][::-1]  # Top 5 predictions
-    actual_champ = np.argmax(Y_train[i])
-    if actual_champ == top_5_indices[0]:
-        top1_correct += 1
-    if actual_champ in top_5_indices:
-        top5_correct += 1
-
-print(f"\nTop-1 accuracy: {top1_correct} / {len(Y_train)} = {top1_correct / len(Y_train):.2%}")
-print(f"Top-5 accuracy: {top5_correct} / {len(Y_train)} = {top5_correct / len(Y_train):.2%}")
