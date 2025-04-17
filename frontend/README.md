@@ -10,8 +10,7 @@ Don't forget to add this line to src/App.tsx to use bootstrap
 
 `import 'bootstrap/dist/css/bootstrap.min.css';`
 
-
-# Activating venv 
+# Activating venv
 
 `source .venv/bin/activate`
 

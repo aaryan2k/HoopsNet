@@ -12,9 +12,9 @@ import StandingsLoader from "./standings/StandingsLoader";
 const RoutesJSX = (
   <Route element={<Layout />}>
     <Route path="/" element={<Home />} index />
-    
+
     <Route path="standings" element={<Standings />} loader={StandingsLoader}>
-        {/* errorElement={<ErrorPage />}  */}
+      {/* errorElement={<ErrorPage />}  */}
     </Route>
 
     {/* <Route 

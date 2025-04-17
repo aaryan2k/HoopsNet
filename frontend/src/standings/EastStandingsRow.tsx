@@ -1,50 +1,15 @@
-// import Image from "react-bootstrap/Image";
-
-// interface EastStandings {
-//   rank: number
-//   city: string;
-//   name: string;
-//   clinchIndicator: string;
-//   gamesBack: string;
-//   record: string;
-//   winPct: string;
-//   home: string;
-//   road: string;
-//   lastTen: string;
-// }
-
-// const EastStandingsRow = ({eastStandings}: {eastStandings: EastStandings}) => {
-//   const icon = `/icons/${eastStandings.name}.png`;  
-//   return (
-//     <tr>
-//         <td>{eastStandings.rank}</td>
-//             <td>
-//                 { <Image src={icon} width="45" height="45"/> }
-//             </td>
-//         <td>{eastStandings.city + " " + eastStandings.name}</td>
-//         <td>{eastStandings.clinchIndicator}</td>
-//         <td>{eastStandings.gamesBack}</td>
-//         <td>{eastStandings.record}</td>
-//         <td>{eastStandings.winPct}</td>
-//         <td>{eastStandings.home}</td>
-//         <td>{eastStandings.road}</td>
-//         <td>{eastStandings.lastTen}</td>
-//     </tr>
-//   )
-// }
-
-// export default EastStandingsRow
-
-
-
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Flex,
   Text,
   Image,
   Button,
+  IconButton,
   useDisclosure,
+  Spinner,
 } from "@chakra-ui/react";
+import { CloseIcon } from "@chakra-ui/icons";
 
 interface EastStandings {
   rank: number;
@@ -59,9 +24,31 @@ interface EastStandings {
   lastTen: string;
 }
 
+interface Player {
+  id: string;
+  name: string;
+  ppg: number;
+  headshotUrl: string;
+}
+
 const EastStandingsRow = ({ teamData }: { teamData: EastStandings }) => {
   const teamIcon = `/icons/${teamData.name}.png`;
   const { open, onOpen, onClose } = useDisclosure();
+
+  const [topPlayers, setTopPlayers] = useState<Player[] | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setTopPlayers(null);
+      fetch(`/api/teams/${encodeURIComponent(teamData.name)}/players`)
+        .then((r) => r.json())
+        .then((players: Player[]) => {
+          const sorted = players.sort((a, b) => b.ppg - a.ppg).slice(0, 3);
+          setTopPlayers(sorted);
+        })
+        .catch(() => setTopPlayers([]));
+    }
+  }, [open, teamData.name]);
 
   return (
     <>
@@ -142,6 +129,35 @@ const EastStandingsRow = ({ teamData }: { teamData: EastStandings }) => {
               <Text>
                 <strong>Last 10:</strong> {teamData.lastTen}
               </Text>
+            </Box>
+            <Box mb={6}>
+              <Text fontSize="lg" fontWeight="semibold" mb={2}>
+                Top Scorers
+              </Text>
+
+              {!topPlayers ? (
+                <Spinner color="teal.300" />
+              ) : topPlayers.length === 0 ? (
+                <Text>No player data.</Text>
+              ) : (
+                topPlayers.map((p) => (
+                  <Flex key={p.id} align="center" mb={3}>
+                    <Image
+                      src={p.headshotUrl}
+                      alt={p.name}
+                      boxSize="40px"
+                      borderRadius="full"
+                      mr={3}
+                    />
+                    <Box>
+                      <Text fontWeight="medium">{p.name}</Text>
+                      <Text fontSize="sm" color="gray.400">
+                        {p.ppg.toFixed(1)} PPG
+                      </Text>
+                    </Box>
+                  </Flex>
+                ))
+              )}
             </Box>
             <Flex justifyContent="flex-end">
               <Button colorScheme="blue" onClick={onClose}>

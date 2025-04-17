@@ -1,11 +1,12 @@
-p, h4 {
-    color: white;
+p,
+h4 {
+  color: white;
 }
 
 .nav-link:hover {
-    color: white;
+  color: white;
 }
 
 .nav-link {
-    color: white;
+  color: white;
 }
