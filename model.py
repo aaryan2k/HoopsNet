@@ -15,14 +15,21 @@ from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 # Local loader of cached features
 from data import load_cached
 
+# -------------------------------------------------------------------- #
+#  Configuration                                                      #
+# -------------------------------------------------------------------- #
 TRAIN_DIR = "train_data"
-TEST_DIR = "test_data"  
+TEST_DIR = "test_data"  # optional; if populated, will evaluate on it
 
+# Champions for training (2004–05 ➔ 2020–21, total 17 seasons)
 Y_CHAMPIONS = [25, 14, 25, 1, 12, 12, 5, 14, 14,
                25, 8, 4, 8, 8, 27, 12, 15]
+# Known champions for test_data seasons (2021-22: Warriors=10, 2022-23: Nuggets=3)
 Y_TEST = [10, 3]
 
-
+# -------------------------------------------------------------------- #
+#  Load Data                                                          #
+# -------------------------------------------------------------------- #
 print("Loading training data from:", TRAIN_DIR)
 X_train = load_cached(TRAIN_DIR)
 assert X_train.ndim == 3, "Expect shape (seasons, teams, features)"
@@ -39,6 +46,9 @@ if Path(TEST_DIR).exists():
     y_test = keras.utils.to_categorical(Y_TEST, num_classes=30)
     print(f"Test: {X_test.shape[0]} seasons available.")
 
+# -------------------------------------------------------------------- #
+#  Model Definitions                                                  #
+# -------------------------------------------------------------------- #
 
 def cnn_se(input_shape: Tuple[int, int]) -> keras.Model:
     """Residual CNN with Squeeze‑Excite blocks."""
@@ -109,7 +119,9 @@ CHOSEN = "cnn_se"
 model = MODEL_BUILDERS[CHOSEN](INPUT_SHAPE)
 model.summary(line_length=100)
 
-
+# -------------------------------------------------------------------- #
+#  Compile & Train                                                   #
+# -------------------------------------------------------------------- #
 model.compile(
     optimizer=keras.optimizers.Adam(1e-3),
     loss="categorical_crossentropy",
@@ -127,6 +139,9 @@ history = model.fit(
     callbacks=callbacks,
 )
 
+# -------------------------------------------------------------------- #
+#  Evaluation                                                         #
+# -------------------------------------------------------------------- #
 print("\n=== Training performance ===")
 train_loss, train_acc = model.evaluate(X_train, y_train, verbose=0)
 print(f"Final training accuracy: {train_acc:.2%}")
@@ -150,6 +165,9 @@ if X_test is not None:
     print(f"Test Top‑1: {top1_t:.2%}")
     print(f"Test Top‑5: {top5_t:.2%}")
 
+# -------------------------------------------------------------------- #
+#  Plot training curve                                                #
+# -------------------------------------------------------------------- #
 plt.figure(figsize=(8, 5))
 plt.plot(history.history["accuracy"], label="Training Accuracy")
 plt.title(f"{model.name} – Training Accuracy")
