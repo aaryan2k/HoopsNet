@@ -1,30 +1,22 @@
 import { createHashRouter, createRoutesFromElements, Route } from "react-router-dom";
 import Layout from "./Layout";
 import Home from "./home/Home";
+import Standings from "./standings/Standings";
+import StandingsLoader from "./standings/StandingsLoader";
+import Stats from "./stats/Stats";
+// import StatsLoader from "./stats/StatsLoader";
+import Prediction from "./prediction/Prediction";
 // import ErrorPage from "./ErrorPage";
-// import { StandingsLoader, ResultsLoader } from "./loaders";
 
 const RoutesJSX = (
   <Route element={<Layout />}>
     <Route path="/" element={<Home />} index />
     
-    {/* <Route path="standings">
-      <Route 
-        path=":year" 
-        loader={StandingsLoader} 
-        element={<SeasonEndStandings />} 
-        errorElement={<ErrorPage />} 
-      />
-      <Route index element={<Standings />} />
+    <Route path="standings" element={<Standings />} loader={StandingsLoader}>
+        {/* errorElement={<ErrorPage />}  */}
     </Route>
-
-    <Route 
-      path="/results/:year" 
-      loader={ResultsLoader} 
-      element={<ResultSearch />} 
-    />
-    
-    <Route path="/results" element={<Results />} />  */}
+    <Route path="/stats" element={<Stats />} /> 
+    <Route path="/prediction" element={<Prediction/>} /> 
   </Route>
 );
 
