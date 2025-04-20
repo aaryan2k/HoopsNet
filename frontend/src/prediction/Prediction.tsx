@@ -5,7 +5,7 @@ import west_bracket from "./west_bracket.png";
 import east_bracket from "./east_bracket.png";
 import thunder from "./Thunder.png";
 import * as Papa from "papaparse";
-import rawOddsCSV from "./odds/test_season_1.csv?raw";
+import rawOddsCSV from "./odds/final_prob.csv?raw";
 
 
 const Predictions: React.FC = () => {
