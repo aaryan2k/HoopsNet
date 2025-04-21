@@ -102,7 +102,7 @@ const LeagueStandingsRow = ({ teamData }: { teamData: LeagueStandings }) => {
           alignItems="center"
           justifyContent="center"
           zIndex={1000}
-          p={4}  // give mobile some breathing room
+          p={4} // give mobile some breathing room
         >
           <Box
             bg="white"
@@ -116,15 +116,15 @@ const LeagueStandingsRow = ({ teamData }: { teamData: LeagueStandings }) => {
             {/* close button */}
             <Image
               src="/redX.jpg"
-              boxSize={10}                /* shorthand for width+height */
+              boxSize={10} /* shorthand for width+height */
               position="absolute"
               top={4}
               right={4}
-              cursor="pointer"            /* show the pointer cursor */
+              cursor="pointer" /* show the pointer cursor */
               transition="transform 0.2s ease, opacity 0.2s ease"
               _hover={{
-                transform: "scale(1.1)",  /* grows by 10% */
-                opacity: 0.8,             /* fades a bit */
+                transform: "scale(1.1)" /* grows by 10% */,
+                opacity: 0.8 /* fades a bit */,
               }}
               onClick={() => setOpen(false)}
               alt="Close panel"
@@ -151,9 +151,18 @@ const LeagueStandingsRow = ({ teamData }: { teamData: LeagueStandings }) => {
                 {/* helper function could DRY this up */}
                 {[
                   ["Games Played", stats.gamesPlayed],
-                  ["Points/Game", (stats.pointsPerGame / stats.gamesPlayed).toFixed(2)],
-                  ["Rebounds/Game", (stats.reboundsPerGame / stats.gamesPlayed).toFixed(2)],
-                  ["Assists/Game", (stats.assistsPerGame / stats.gamesPlayed).toFixed(2)],
+                  [
+                    "Points/Game",
+                    (stats.pointsPerGame / stats.gamesPlayed).toFixed(2),
+                  ],
+                  [
+                    "Rebounds/Game",
+                    (stats.reboundsPerGame / stats.gamesPlayed).toFixed(2),
+                  ],
+                  [
+                    "Assists/Game",
+                    (stats.assistsPerGame / stats.gamesPlayed).toFixed(2),
+                  ],
                 ].map(([label, value]) => (
                   <Box key={label}>
                     <Text fontSize="sm" color="gray.500" mb={1}>
