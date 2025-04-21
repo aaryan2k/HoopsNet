@@ -49,7 +49,7 @@ async def get_nba_stats(stat: str = Query(..., description="Stat to filter by"))
     if stat not in STAT_OPTIONS:
         return {"error": "Invalid stat option. Choose from: " + ", ".join(STAT_OPTIONS)}
     data = LeagueDashPlayerStats().get_data_frames()[0]
-    df = data[["PLAYER_NAME", "GP", "GP_RANK", stat]].rename(columns={"PLAYER_NAME": "name", "GP" : "games", "GP_RANK" : "gamesRank", stat: "value"})
+    df = data[["PLAYER_NAME", "GP", "GP_RANK", "TEAM_ABBREVIATION", stat]].rename(columns={"PLAYER_NAME": "name", "GP" : "games", "GP_RANK" : "gamesRank", "TEAM_ABBREVIATION" : "team",stat: "value"})
     cumulative_list = ["PTS", "AST", "REB", "STL", "BLK", "TOV"]
     if stat in cumulative_list:
         # Convert cumulative stats to per game
