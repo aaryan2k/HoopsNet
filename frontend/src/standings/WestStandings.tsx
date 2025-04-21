@@ -1,7 +1,7 @@
 import { useLoaderData } from "react-router-dom";
 import { Box, Flex, Text, Heading } from "@chakra-ui/react";
 import WestStandingsRow from "./WestStandingsRow";
-import { ListItem, Badge } from "@chakra-ui/react";
+import {Badge } from "@chakra-ui/react";
 
 function Legend() {
   const items = [
@@ -35,11 +35,11 @@ function Legend() {
 const LeagueStandings = () => {
   const standings = useLoaderData() as any[];
   const nbaStandings = standings[0];
-  const eastStandings = nbaStandings.filter(
+  const westStandings = nbaStandings.filter(
     (team: any) => team.conference === "West",
   );
 
-  if (eastStandings.length === 0) {
+  if (westStandings.length === 0) {
     return (
       <Box p={4}>
         <Text>No data found</Text>
@@ -89,7 +89,7 @@ const LeagueStandings = () => {
             Last 10
           </Text>
         </Flex>
-        {eastStandings.map((team: any) => (
+        {westStandings.map((team: any) => (
           <WestStandingsRow key={team.rank} teamData={team} />
         ))}
       </Flex>

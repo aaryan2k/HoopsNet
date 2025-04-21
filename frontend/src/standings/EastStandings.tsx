@@ -1,7 +1,7 @@
 import { useLoaderData } from "react-router-dom";
 import { Box, Flex, Text, Heading } from "@chakra-ui/react";
 import EastStandingsRow from "./EastStandingsRow";
-import { ListItem, Badge } from "@chakra-ui/react";
+import { Badge } from "@chakra-ui/react";
 
 function Legend() {
   const items = [

@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-from nba_api.stats.endpoints import LeagueDashPlayerStats, LeagueStandings
+from nba_api.stats.endpoints import LeagueDashPlayerStats, LeagueStandings, LeagueDashTeamStats
 
 app = FastAPI()
 
@@ -25,7 +25,7 @@ async def main_route():
 @app.get("/nba-standings")
 async def get_nba_standings():
     standings = LeagueStandings().get_data_frames()[0]
-    df = standings[["PlayoffRank", "TeamCity", "TeamName", "Conference", "Record", "ClinchIndicator", "ConferenceGamesBack", "WinPCT", "HOME", "ROAD", "L10"]].rename(columns={
+    df = standings[["PlayoffRank", "TeamCity", "TeamName", "Conference", "Record", "ClinchIndicator", "ConferenceGamesBack", "WinPCT", "HOME", "ROAD", "L10", "TeamID"]].rename(columns={
         "PlayoffRank" : "rank",
         "TeamCity": "city",
         "TeamName": "name",
@@ -36,7 +36,8 @@ async def get_nba_standings():
         "WinPCT": "winPct",
         "HOME": "home",
         "ROAD": "road",
-        "L10": "lastTen"
+        "L10": "lastTen",
+        "TeamID": "teamId",
     })
     # Order by highest win percentage
     df = df.sort_values(by=["winPct"], ascending=False).reset_index(drop=True)
@@ -61,3 +62,28 @@ async def get_nba_stats(stat: str = Query(..., description="Stat to filter by"))
     df = df[df["gamesRank"] < 150]
     df = df.nlargest(10, "value")
     return df.to_dict(orient="records")
+
+@app.get("/nba-team-stats")
+async def get_nba_team_stats(
+    team_id: int = Query(..., description="NBA team ID from the standings endpoint"),
+):
+    # pull league‑wide team stats (per game by default)
+    df = LeagueDashTeamStats().get_data_frames()[0]
+
+    # nba_api uses TEAM_ID to identify teams
+    team_df = df[df["TEAM_ID"] == team_id]
+    if team_df.empty:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    # pick out the columns you care about
+    result = team_df[["TEAM_ID", "TEAM_NAME", "GP", "PTS", "REB", "AST"]].rename(
+        columns={
+            "GP": "gamesPlayed",
+            "PTS": "pointsPerGame",
+            "REB": "reboundsPerGame",
+            "AST": "assistsPerGame",
+        }
+    ).to_dict(orient="records")
+
+    # result will be a one‐item list
+    return result[0]

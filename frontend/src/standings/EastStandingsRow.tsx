@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Flex,
   Text,
   Image,
-  Button,
-  IconButton,
-  useDisclosure,
   Spinner,
+  Heading,
+  SimpleGrid,
 } from "@chakra-ui/react";
-import { CloseIcon } from "@chakra-ui/icons";
 
 interface EastStandings {
+  teamId: number;
   rank: number;
   city: string;
   name: string;
@@ -24,146 +23,149 @@ interface EastStandings {
   lastTen: string;
 }
 
-interface Player {
-  id: string;
-  name: string;
-  ppg: number;
-  headshotUrl: string;
-}
+type TeamStats = {
+  teamId: number;
+  teamName: string;
+  gamesPlayed: number;
+  pointsPerGame: number;
+  reboundsPerGame: number;
+  assistsPerGame: number;
+};
 
 const EastStandingsRow = ({ teamData }: { teamData: EastStandings }) => {
   const teamIcon = `/icons/${teamData.name}.png`;
-  const { open, onOpen, onClose } = useDisclosure();
 
-  const [topPlayers, setTopPlayers] = useState<Player[] | null>(null);
+  const [stats, setStats] = useState<TeamStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      setTopPlayers(null);
-      fetch(`/api/teams/${encodeURIComponent(teamData.name)}/players`)
-        .then((r) => r.json())
-        .then((players: Player[]) => {
-          const sorted = players.sort((a, b) => b.ppg - a.ppg).slice(0, 3);
-          setTopPlayers(sorted);
-        })
-        .catch(() => setTopPlayers([]));
-    }
-  }, [open, teamData.name]);
+    if (!open) return;
+
+    setLoading(true);
+    setError(null);
+
+    fetch(`http://localhost:8000/nba-team-stats?team_id=${teamData.teamId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Team not found");
+        return res.json();
+      })
+      .then((json) => {
+        setStats(json);
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [open, teamData.teamId]);
 
   return (
     <>
+      {/* Row */}
       <Flex
         p={2}
-        borderWidth={0.2}
-        borderColor="white"
+        borderWidth={1}
+        borderColor="gray.700"
         align="center"
-        _hover={{ bg: "#225566" }}
-        onClick={onOpen}
+        _hover={{ bg: "gray.800" }}
+        onClick={() => setOpen(true)}
         cursor="pointer"
       >
-        <Text flex="1">{teamData.rank}</Text>
-
+        <Text flex={1}>{teamData.rank}</Text>
         <Image
-          flex="1"
+          flex={1}
           src={teamIcon}
           alt={`${teamData.name} logo`}
-          boxSize="45px"
+          boxSize={10}
           objectFit="contain"
         />
-        <Text flex="3">
-          {teamData.city ? `${teamData.city} ${teamData.name}` : teamData.name}
+        <Text flex={3}>
+          {teamData.city} {teamData.name}
         </Text>
-        <Text flex="1">{teamData.clinchIndicator}</Text>
-        <Text flex="2">{teamData.gamesBack}</Text>
-        <Text flex="2">{teamData.record}</Text>
-        <Text flex="1">{teamData.winPct}%</Text>
-        <Text flex="1">{teamData.home}</Text>
-        <Text flex="1">{teamData.road}</Text>
-        <Text flex="1">{teamData.lastTen}</Text>
+        <Text flex={1}>{teamData.clinchIndicator}</Text>
+        <Text flex={2}>{teamData.gamesBack}</Text>
+        <Text flex={2}>{teamData.record}</Text>
+        <Text flex={1}>{teamData.winPct}%</Text>
+        <Text flex={1}>{teamData.home}</Text>
+        <Text flex={1}>{teamData.road}</Text>
+        <Text flex={1}>{teamData.lastTen}</Text>
       </Flex>
       {open && (
         <Box
           position="fixed"
-          top="0"
-          left="0"
-          width="100%"
-          height="100%"
+          inset={0}
           bg="rgba(0, 0, 0, 0.6)"
           display="flex"
           alignItems="center"
           justifyContent="center"
           zIndex={1000}
+          p={4}  // give mobile some breathing room
         >
           <Box
             bg="white"
+            rounded="lg"
+            boxShadow="2xl"
+            maxW="lg"
+            w="100%"
             p={6}
-            borderRadius="md"
-            width={{ base: "90%", md: "500px" }}
             position="relative"
           >
-            <Text fontSize="xl" fontWeight="bold" mb={4}>
-              {teamData.city} {teamData.name} Details
-            </Text>
-            <Box mb={4}>
-              <Text>
-                <strong>Rank:</strong> {teamData.rank}
-              </Text>
-              <Text>
-                <strong>Clinched Indicator:</strong> {teamData.clinchIndicator}
-              </Text>
-              <Text>
-                <strong>Games Back:</strong> {teamData.gamesBack}
-              </Text>
-              <Text>
-                <strong>Record:</strong> {teamData.record}
-              </Text>
-              <Text>
-                <strong>Win %:</strong> {teamData.winPct}%
-              </Text>
-              <Text>
-                <strong>Home:</strong> {teamData.home}
-              </Text>
-              <Text>
-                <strong>Road:</strong> {teamData.road}
-              </Text>
-              <Text>
-                <strong>Last 10:</strong> {teamData.lastTen}
-              </Text>
-            </Box>
-            <Box mb={6}>
-              <Text fontSize="lg" fontWeight="semibold" mb={2}>
-                Top Scorers
-              </Text>
+            {/* close button */}
+            <Image
+              src="/redX.jpg"
+              boxSize={10}                /* shorthand for width+height */
+              position="absolute"
+              top={4}
+              right={4}
+              cursor="pointer"            /* show the pointer cursor */
+              transition="transform 0.2s ease, opacity 0.2s ease"
+              _hover={{
+                transform: "scale(1.1)",  /* grows by 10% */
+                opacity: 0.8,             /* fades a bit */
+              }}
+              onClick={() => setOpen(false)}
+              alt="Close panel"
+            />
 
-              {!topPlayers ? (
-                <Spinner color="teal.300" />
-              ) : topPlayers.length === 0 ? (
-                <Text>No player data.</Text>
-              ) : (
-                topPlayers.map((p) => (
-                  <Flex key={p.id} align="center" mb={3}>
-                    <Image
-                      src={p.headshotUrl}
-                      alt={p.name}
-                      boxSize="40px"
-                      borderRadius="full"
-                      mr={3}
-                    />
-                    <Box>
-                      <Text fontWeight="medium">{p.name}</Text>
-                      <Text fontSize="sm" color="gray.400">
-                        {p.ppg.toFixed(1)} PPG
-                      </Text>
-                    </Box>
-                  </Flex>
-                ))
-              )}
-            </Box>
-            <Flex justifyContent="flex-end">
-              <Button colorScheme="blue" onClick={onClose}>
-                Close
-              </Button>
+            {/* header */}
+            <Flex align="center" mb={4}>
+              <Heading size="lg" color="blue.600">
+                {teamData.city} {teamData.name}
+              </Heading>
             </Flex>
+
+            {/* <Divider mb={4} /> */}
+
+            {/* stats grid */}
+            {loading ? (
+              <Flex justify="center" py={10}>
+                <Spinner size="xl" />
+              </Flex>
+            ) : error ? (
+              <Text color="red.500">{error}</Text>
+            ) : stats ? (
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
+                {/* helper function could DRY this up */}
+                {[
+                  ["Games Played", stats.gamesPlayed],
+                  ["Points/Game", (stats.pointsPerGame / stats.gamesPlayed).toFixed(2)],
+                  ["Rebounds/Game", (stats.reboundsPerGame / stats.gamesPlayed).toFixed(2)],
+                  ["Assists/Game", (stats.assistsPerGame / stats.gamesPlayed).toFixed(2)],
+                ].map(([label, value]) => (
+                  <Box key={label}>
+                    <Text fontSize="sm" color="gray.500" mb={1}>
+                      {label}
+                    </Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="gray.800">
+                      {value}
+                    </Text>
+                  </Box>
+                ))}
+              </SimpleGrid>
+            ) : null}
           </Box>
         </Box>
       )}
