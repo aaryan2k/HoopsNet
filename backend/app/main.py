@@ -59,8 +59,8 @@ async def get_nba_stats(stat: str = Query(..., description="Stat to filter by"))
         # Convert % stats from decimal to percentage
         df["value"] = df["value"] * 100
     # Filter out players with small sample sizes
-    df = df[df["gamesRank"] < 150]
-    df = df.nlargest(10, "value")
+    df = df[df["gamesRank"] < 250]
+    df = df.nlargest(8, "value")
     return df.to_dict(orient="records")
 
 @app.get("/nba-team-stats")
