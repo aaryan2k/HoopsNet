@@ -1,57 +1,8 @@
-"""
-Full `model.py` for NBA champion prediction, with enhanced feature set and a choice of three architectures.
-"""
-from __future__ import annotations
-import os
-from pathlib import Path
-from typing import Tuple, List
-
-import numpy as np
-import matplotlib.pyplot as plt
 from tensorflow import keras
 from keras import layers
-from keras.callbacks import ReduceLROnPlateau, EarlyStopping
+from typing import Tuple
 
-# Local loader of cached features
-from data import load_cached
-
-# -------------------------------------------------------------------- #
-#  Configuration                                                      #
-# -------------------------------------------------------------------- #
-TRAIN_DIR = "train_data"
-TEST_DIR = "test_data"  # optional; if populated, will evaluate on it
-
-# Champions for training (2004–05 ➔ 2020–21, total 17 seasons)
-Y_CHAMPIONS = [25, 14, 25, 1, 12, 12, 5, 14, 14,
-               25, 8, 4, 8, 8, 27, 12, 15]
-# Known champions for test_data seasons (2021-22: Warriors=10, 2022-23: Nuggets=3)
-Y_TEST = [10, 3]
-
-# -------------------------------------------------------------------- #
-#  Load Data                                                          #
-# -------------------------------------------------------------------- #
-print("Loading training data from:", TRAIN_DIR)
-X_train = load_cached(TRAIN_DIR)
-assert X_train.ndim == 3, "Expect shape (seasons, teams, features)"
-
-y_train = keras.utils.to_categorical(Y_CHAMPIONS, num_classes=30)
-N_SEASONS, N_TEAMS, N_FEAT = X_train.shape
-INPUT_SHAPE: Tuple[int, int] = (N_TEAMS, N_FEAT)
-print(f"Train: {N_SEASONS} seasons, {N_TEAMS} teams, {N_FEAT} features each.")
-
-X_test, y_test = None, None
-if Path(TEST_DIR).exists():
-    print("Loading test data from:", TEST_DIR)
-    X_test = load_cached(TEST_DIR)
-    y_test = keras.utils.to_categorical(Y_TEST, num_classes=30)
-    print(f"Test: {X_test.shape[0]} seasons available.")
-
-# -------------------------------------------------------------------- #
-#  Model Definitions                                                  #
-# -------------------------------------------------------------------- #
-
-def cnn_se(input_shape: Tuple[int, int]) -> keras.Model:
-    """Residual CNN with Squeeze‑Excite blocks."""
+def build(input_shape: Tuple[int, int]) -> keras.Model:
     inputs = keras.Input(shape=input_shape)
     x = layers.Conv1D(96, 3, padding="same")(inputs)
     x = layers.BatchNormalization()(x)
@@ -65,8 +16,7 @@ def cnn_se(input_shape: Tuple[int, int]) -> keras.Model:
         x = layers.Conv1D(filters, 3, padding="same")(x)
         x = layers.BatchNormalization()(x)
         x = layers.add([x, skip])
-
-        # Squeeze‑Excite
+        # squeeze‑excite
         se = layers.GlobalAveragePooling1D()(x)
         se = layers.Dense(filters // 16, activation="relu")(se)
         se = layers.Dense(filters, activation="sigmoid")(se)
@@ -80,100 +30,52 @@ def cnn_se(input_shape: Tuple[int, int]) -> keras.Model:
     outputs = layers.Dense(30, activation="softmax")(x)
     return keras.Model(inputs, outputs, name="CNN_SE")
 
+import subprocess, os, numpy as np, pandas as pd
+from pathlib import Path
+from tensorflow import keras
+from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 
-def lstm_stacked(input_shape: Tuple[int, int]) -> keras.Model:
-    """Stacked bidirectional LSTM with dense head."""
-    inputs = keras.Input(shape=input_shape)
-    x = layers.Bidirectional(layers.LSTM(256, return_sequences=True))(inputs)
-    x = layers.Dropout(0.3)(x)
-    x = layers.Bidirectional(layers.LSTM(256))(x)
-    x = layers.Dropout(0.3)(x)
-    for units, drop in [(512, 0.4), (256, 0.3), (128, 0.2)]:
-        x = layers.Dense(units, activation="relu")(x)
-        x = layers.Dropout(drop)(x)
-    outputs = layers.Dense(30, activation="softmax")(x)
-    return keras.Model(inputs, outputs, name="LSTM_Stacked")
+DATA = Path("/mnt/data")
+for f in ["X_train.npy", "X_2526.npy"]:
+    if not (DATA / f).exists():
+        subprocess.check_call(["python", "preprocess_teams.py"])
 
+# ----------------------- load tensors ------------------------------ #
+X_train = np.load(DATA / "X_train.npy")   # shape (17, 30, F)
+y_train = np.load(DATA / "y_train.npy")
+X_test  = np.load(DATA / "X_test.npy")    # shape (3, 30, F)
+y_test  = np.load(DATA / "y_test.npy")
+X_pred  = np.load(DATA / "X_2526.npy")    # shape (30, F)
 
-def mlp_deep(input_shape: Tuple[int, int]) -> keras.Model:
-    """Deep MLP with LayerNorm and GELU activations."""
-    inputs = keras.Input(shape=input_shape)
-    x = layers.Flatten()(inputs)
-    for units, drop in [(2048, 0.4), (1024, 0.4), (512, 0.3), (512, 0.3), (256, 0.2)]:
-        x = layers.Dense(units)(x)
-        x = layers.LayerNormalization()(x)
-        x = layers.Activation("gelu")(x)
-        x = layers.Dropout(drop)(x)
-    outputs = layers.Dense(30, activation="softmax")(x)
-    return keras.Model(inputs, outputs, name="MLP_Deep")
+model = build((30, X_train.shape[-1]))
+model.compile(optimizer=keras.optimizers.Adam(1e-3),
+              loss="categorical_crossentropy",
+              metrics=["accuracy"])
 
-# Map strings to builder functions
-MODEL_BUILDERS = {
-    "cnn_se": cnn_se,
-    "lstm": lstm_stacked,
-    "mlp": mlp_deep,
-}
+cb = [ReduceLROnPlateau(monitor="loss", factor=0.5, patience=8, verbose=1),
+      EarlyStopping(monitor="loss", patience=20, restore_best_weights=True)]
 
-# Choose model: "cnn_se", "lstm", or "mlp"
-CHOSEN = "cnn_se"
-model = MODEL_BUILDERS[CHOSEN](INPUT_SHAPE)
-model.summary(line_length=100)
+model.fit(X_train, y_train,
+          epochs=400,
+          batch_size=4,
+          verbose=2,
+          callbacks=cb)
 
-# -------------------------------------------------------------------- #
-#  Compile & Train                                                   #
-# -------------------------------------------------------------------- #
-model.compile(
-    optimizer=keras.optimizers.Adam(1e-3),
-    loss="categorical_crossentropy",
-    metrics=["accuracy"],
-)
-callbacks = [
-    ReduceLROnPlateau(monitor="loss", factor=0.5, patience=8, verbose=1),
-    EarlyStopping(monitor="loss", patience=20, restore_best_weights=True),
+# ----------------------- evaluation ------------------------------- #
+print("\n=== Eval 2021‑22 → 2023‑24 ===")
+probs_test = model.predict(X_test)
+top1_hits  = (probs_test.argmax(-1) == y_test.argmax(-1)).mean()
+top5_hits  = [
+    champ in probs.argsort()[-5:]
+    for probs, champ in zip(probs_test, y_test.argmax(-1))
 ]
-history = model.fit(
-    X_train, y_train,
-    epochs=400,
-    batch_size=4,
-    verbose=2,
-    callbacks=callbacks,
-)
+print(f"Top‑1  : {top1_hits:.2%}")
+print(f"Top‑5  : {np.mean(top5_hits):.2%}")
 
-# -------------------------------------------------------------------- #
-#  Evaluation                                                         #
-# -------------------------------------------------------------------- #
-print("\n=== Training performance ===")
-train_loss, train_acc = model.evaluate(X_train, y_train, verbose=0)
-print(f"Final training accuracy: {train_acc:.2%}")
-probs = model.predict(X_train, verbose=0)
-top1 = np.mean(np.argmax(probs, axis=1) == np.argmax(y_train, axis=1))
-top5 = np.mean([
-    np.argmax(y) in p.argsort()[-5:] for p, y in zip(probs, y_train)
-])
-print(f"Top‑1 recall (LOSO proxy): {top1:.2%}")
-print(f"Top‑5 recall: {top5:.2%}")
-
-if X_test is not None:
-    print("\n=== Test performance ===")
-    loss_t, acc_t = model.evaluate(X_test, y_test, verbose=0)
-    print(f"Test accuracy: {acc_t:.2%}")
-    probs_t = model.predict(X_test, verbose=0)
-    top1_t = np.mean(np.argmax(probs_t, axis=1) == np.argmax(y_test, axis=1))
-    top5_t = np.mean([
-        np.argmax(y) in p.argsort()[-5:] for p, y in zip(probs_t, y_test)
-    ])
-    print(f"Test Top‑1: {top1_t:.2%}")
-    print(f"Test Top‑5: {top5_t:.2%}")
-
-# -------------------------------------------------------------------- #
-#  Plot training curve                                                #
-# -------------------------------------------------------------------- #
-plt.figure(figsize=(8, 5))
-plt.plot(history.history["accuracy"], label="Training Accuracy")
-plt.title(f"{model.name} – Training Accuracy")
-plt.xlabel("Epoch")
-plt.ylabel("Accuracy")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# ----------------------- 2024‑25 prediction ----------------------- #
+probs_pred = model.predict(X_pred[None, ...])[0]  # (30, )
+teams_25   = pd.read_csv(DATA / "2024-25_team_stats.csv")["TEAM_NAME"]
+out = (pd.DataFrame({"TEAM_NAME": teams_25, "champ_prob": probs_pred})
+         .sort_values("champ_prob", ascending=False))
+out.to_csv(DATA / "champ_probabilities_2025.csv", index=False)
+print("\nSaved champ_probabilities_2025.csv")
