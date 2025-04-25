@@ -1,4 +1,8 @@
-import { createHashRouter, createRoutesFromElements, Route } from "react-router-dom";
+import {
+  createHashRouter,
+  createRoutesFromElements,
+  Route,
+} from "react-router-dom";
 import Layout from "./Layout";
 import Home from "./home/Home";
 import Standings from "./standings/Standings";
@@ -12,9 +16,9 @@ import Prediction from "./prediction/Prediction";
 const RoutesJSX = (
   <Route element={<Layout />}>
     <Route path="/" element={<Home />} index />
-    
+
     <Route path="standings" element={<Standings />} loader={StandingsLoader}>
-        {/* errorElement={<ErrorPage />}  */}
+      {/* errorElement={<ErrorPage />}  */}
     </Route>
     <Route path="/stats/:stat" loader={StatsLoader} element={<StatsGraph />}/>
     <Route path="/stats" element={<Stats />} /> 

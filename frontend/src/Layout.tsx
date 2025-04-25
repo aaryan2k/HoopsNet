@@ -3,7 +3,7 @@ import Navigation from "./nav-bar/Navigation";
 // import BasicSpinner from "./BasicSpinner";
 
 function Layout() {
-//   const { state } = useNavigation();
+  //   const { state } = useNavigation();
   return (
     <>
       <Navigation />
@@ -16,4 +16,3 @@ function Layout() {
 }
 
 export default Layout;
-
