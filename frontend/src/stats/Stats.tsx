@@ -8,7 +8,7 @@ const Stats = () => {
     <div>
         <div className="jumbotron jumbotron-results py-5">
                 <Container className="container-fluid">
-                    <h1 className="display-4 fw-bold text-white text-start">Results</h1>
+                    <h1 className="display-4 fw-bold text-white text-start">Stats</h1>
                 </Container>
             </div>
             <h1 className="text-2xl font-bold">Select NBA Stat</h1>
