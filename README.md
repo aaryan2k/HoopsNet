@@ -64,6 +64,15 @@
 
 ---
 
+## 👥 Team Contributions
+
+- **Dhruv Anurag** ([https://github.com/dhruvanurag1](https://github.com/dhruvanurag1)): Built and trained one of the AI prediction models using historical NBA data. Focused on model training, testing, and evaluation.
+- **Aaryan Singh** ([https://github.com/aaryan2k](https://github.com/aaryan2k)): Led core development of the website. Built the Standings and Stats pages and connected frontend components to backend APIs.
+- **Keshav Subramonian** ([https://github.com/KeshavS05](https://github.com/KeshavS05)): Developed the Home page and significantly enhanced the visual design and user experience across the entire site. Contributed to both frontend and backend.
+- **Kartik Vasudeva** ([https://github.com/kvasudeva24](https://github.com/kvasudeva24)): Created an additional AI prediction model and designed the AI Prediction page UI. Trained and tested with CSV datasets from past NBA seasons.
+
+---
+
 ## ⚙️ Setup
 
 ### Backend Setup
