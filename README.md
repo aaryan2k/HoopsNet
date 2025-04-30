@@ -1,4 +1,4 @@
-# 🏀 HoopsNet 🏀 
+# 🏀 HoopsNet 🏀
 
 **HoopsNet** is a comprehensive NBA statistics and prediction platform that provides real-time NBA standings, player statistics, and an AI-powered championship prediction.
 
