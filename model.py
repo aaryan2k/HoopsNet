@@ -1,81 +1,88 @@
-from tensorflow import keras
-from keras import layers
-from typing import Tuple
-
-def build(input_shape: Tuple[int, int]) -> keras.Model:
-    inputs = keras.Input(shape=input_shape)
-    x = layers.Conv1D(96, 3, padding="same")(inputs)
-    x = layers.BatchNormalization()(x)
-    x = layers.LeakyReLU(0.1)(x)
-
-    for filters, drop in [(128, 0.35), (256, 0.35), (512, 0.35)]:
-        skip = x
-        x = layers.Conv1D(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(0.1)(x)
-        x = layers.Conv1D(filters, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.add([x, skip])
-        # squeeze‑excite
-        se = layers.GlobalAveragePooling1D()(x)
-        se = layers.Dense(filters // 16, activation="relu")(se)
-        se = layers.Dense(filters, activation="sigmoid")(se)
-        se = layers.Reshape((1, filters))(se)
-        x = layers.multiply([x, se])
-        x = layers.Dropout(drop)(x)
-
-    x = layers.Flatten()(x)
-    x = layers.Dense(512, activation="relu")(x)
-    x = layers.Dropout(0.4)(x)
-    outputs = layers.Dense(30, activation="softmax")(x)
-    return keras.Model(inputs, outputs, name="CNN_SE")
-
-import subprocess, os, numpy as np, pandas as pd
+"""
+Preprocess NBA team statistics into NumPy tensors for model training and prediction.
+"""
+import json
 from pathlib import Path
-from tensorflow import keras
-from keras.callbacks import ReduceLROnPlateau, EarlyStopping
 
-DATA = Path("/mnt/data")
-for f in ["X_train.npy", "X_2526.npy"]:
-    if not (DATA / f).exists():
-        subprocess.check_call(["python", "preprocess_teams.py"])
+import numpy as np
+import pandas as pd
 
-# ----------------------- load tensors ------------------------------ #
-X_train = np.load(DATA / "X_train.npy")   # shape (17, 30, F)
-y_train = np.load(DATA / "y_train.npy")
-X_test  = np.load(DATA / "X_test.npy")    # shape (3, 30, F)
-y_test  = np.load(DATA / "y_test.npy")
-X_pred  = np.load(DATA / "X_2526.npy")    # shape (30, F)
+# ----------------------------------------------------------------- #
+# Configuration                                                   #
+# ----------------------------------------------------------------- #
+TRAIN_SEASONS = [f"{year:04d}-{str(year + 1)[-2:]}" for year in range(2004, 2021)]
+TEST_SEASONS = ["2021-22", "2022-23", "2023-24"]
+PREDICT_SEASON = "2024-25"
 
-model = build((30, X_train.shape[-1]))
-model.compile(optimizer=keras.optimizers.Adam(1e-3),
-              loss="categorical_crossentropy",
-              metrics=["accuracy"])
+# Mapping season to championship team index
+CHAMPION_LABELS = {
+    "2004-05": 25,  # Spurs
+    "2005-06": 14,  # Heat
+    # ... (other seasons) ...
+    "2023-24": 1,   # Celtics
+}
 
-cb = [ReduceLROnPlateau(monitor="loss", factor=0.5, patience=8, verbose=1),
-      EarlyStopping(monitor="loss", patience=20, restore_best_weights=True)]
+DATA_DIR = Path("/mnt/data")
 
-model.fit(X_train, y_train,
-          epochs=400,
-          batch_size=4,
-          verbose=2,
-          callbacks=cb)
 
-# ----------------------- evaluation ------------------------------- #
-print("\n=== Eval 2021‑22 → 2023‑24 ===")
-probs_test = model.predict(X_test)
-top1_hits  = (probs_test.argmax(-1) == y_test.argmax(-1)).mean()
-top5_hits  = [
-    champ in probs.argsort()[-5:]
-    for probs, champ in zip(probs_test, y_test.argmax(-1))
-]
-print(f"Top‑1  : {top1_hits:.2%}")
-print(f"Top‑5  : {np.mean(top5_hits):.2%}")
+# ----------------------------------------------------------------- #
+# Data loading and preprocessing                                  #
+# ----------------------------------------------------------------- #
 
-# ----------------------- 2024‑25 prediction ----------------------- #
-probs_pred = model.predict(X_pred[None, ...])[0]  # (30, )
-teams_25   = pd.read_csv(DATA / "2024-25_team_stats.csv")["TEAM_NAME"]
-out = (pd.DataFrame({"TEAM_NAME": teams_25, "champ_prob": probs_pred})
-         .sort_values("champ_prob", ascending=False))
-out.to_csv(DATA / "champ_probabilities_2025.csv", index=False)
-print("\nSaved champ_probabilities_2025.csv")
+def load_season_stats(season: str) -> pd.DataFrame:
+    """
+    Load a season's team statistics CSV and fill missing values with zeros.
+
+    Args:
+        season: Season string, e.g. "2024-25".
+
+    Returns:
+        DataFrame with no missing values.
+    """
+    filename = DATA_DIR / f"{season}_team_stats.csv"
+    df = pd.read_csv(filename)
+    return df.fillna(0)
+
+
+def make_xy(seasons: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Convert a list of seasons into feature and label arrays.
+
+    Args:
+        seasons: List of season strings.
+
+    Returns:
+        X: Array of shape (n_seasons, n_teams, n_features)
+        y: One-hot label array of shape (n_seasons, n_teams)
+    """
+    features, labels = [], []
+    for season in seasons:
+        df = load_season_stats(season)
+        # Drop identifiers
+        X_season = df.drop(columns=["TEAM_ID", "TEAM_NAME"]).to_numpy(dtype=np.float32)
+        features.append(X_season)
+
+        # One-hot encode champion index
+        label = np.zeros(X_season.shape[0], dtype=np.float32)
+        champion_idx = CHAMPION_LABELS.get(season)
+        if champion_idx is not None:
+            label[champion_idx] = 1.0
+        labels.append(label)
+
+    return np.stack(features), np.stack(labels)
+
+
+if __name__ == "__main__":
+    # Save training and test tensors
+    X_train, y_train = make_xy(TRAIN_SEASONS)
+    X_test, y_test = make_xy(TEST_SEASONS)
+
+    np.save(DATA_DIR / "X_train.npy", X_train)
+    np.save(DATA_DIR / "y_train.npy", y_train)
+    np.save(DATA_DIR / "X_test.npy", X_test)
+    np.save(DATA_DIR / "y_test.npy", y_test)
+
+    # Save prediction features for the upcoming season
+    df_future = load_season_stats(PREDICT_SEASON)
+    X_future = df_future.drop(columns=["TEAM_ID", "TEAM_NAME"]).to_numpy(dtype=np.float32)
+    np.save(DATA_DIR / "X_2526.npy", X_future)

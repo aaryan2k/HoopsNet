@@ -1,56 +1,107 @@
-import numpy as np, pandas as pd, os, json
+from pathlib import Path
 
-# ------------------------------------------------------------------ #
-# 1. seasons and champion labels                                     #
-# ------------------------------------------------------------------ #
-TRAIN_SEASONS = [f"{y:04d}-{str(y+1)[-2:]}" for y in range(2004, 2021)]
-TEST_SEASONS  = ["2021-22", "2022-23", "2023-24"]
-PREDICT_SEASON = "2024-25"
+import numpy as np
+import pandas as pd
+from tensorflow import keras
+from keras import layers
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
-CHAMPS = {
-    "2004-05": 25,  # Spurs
-    "2005-06": 14,  # Heat
-    "2006-07": 25,  # Spurs
-    "2007-08": 1,   # Celtics
-    "2008-09": 12,  # Lakers
-    "2009-10": 12,  # Lakers
-    "2010-11": 5,   # Mavericks
-    "2011-12": 14,  # Heat
-    "2012-13": 14,  # Heat
-    "2013-14": 25,  # Spurs
-    "2014-15": 8,   # Warriors
-    "2015-16": 4,   # Cavaliers
-    "2016-17": 8,   # Warriors
-    "2017-18": 8,   # Warriors
-    "2018-19": 27,  # Raptors
-    "2019-20": 12,  # Lakers
-    "2020-21": 15,  # Bucks
-    "2021-22": 8,   # Warriors
-    "2022-23": 3,   # Nuggets
-    "2023-24": 1,   # Celtics  ← NEW
-}
+# ----------------------------------------------------------------- #
+# Model definition                                                #
+# ----------------------------------------------------------------- #
+def build_cnn_model(input_shape: tuple[int, int]) -> keras.Model:
+    """
+    Create a 1D convolutional neural network with squeeze-and-excite blocks.
 
-def load(season):
-    fn = f"/mnt/data/{season}_team_stats.csv"
-    return pd.read_csv(fn).fillna(0)
+    Args:
+        input_shape: Tuple (n_teams, n_features).
 
-def make_xy(seasons):
-    mats, labels = [], []
-    for s in seasons:
-        df = load(s)
-        mats.append(df.drop(columns=["TEAM_ID", "TEAM_NAME"]).to_numpy(np.float32))
-        lab = np.zeros(30, np.float32)
-        lab[CHAMPS[s]] = 1.0
-        labels.append(lab)
-    return np.asarray(mats), np.asarray(labels)
+    Returns:
+        Compiled Keras model (uncompiled).
+    """
+    inputs = keras.Input(shape=input_shape)
+    x = layers.Conv1D(96, kernel_size=3, padding="same")(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(alpha=0.1)(x)
 
-# ------------------------------------------------------------------ #
-# 2. write tensors                                                   #
-# ------------------------------------------------------------------ #
-np.save("/mnt/data/X_train.npy", make_xy(TRAIN_SEASONS)[0])
-np.save("/mnt/data/y_train.npy", make_xy(TRAIN_SEASONS)[1])
-np.save("/mnt/data/X_test.npy",  make_xy(TEST_SEASONS)[0])
-np.save("/mnt/data/y_test.npy",  make_xy(TEST_SEASONS)[1])
+    # Residual blocks with squeeze-and-excite
+    for filters, dropout_rate in [(128, 0.35), (256, 0.35), (512, 0.35)]:
+        shortcut = x
+        x = layers.Conv1D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.LeakyReLU(alpha=0.1)(x)
+        x = layers.Conv1D(filters, 3, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.add([x, shortcut])
 
-X_2526 = load(PREDICT_SEASON).drop(columns=["TEAM_ID", "TEAM_NAME"]).to_numpy(np.float32)
-np.save("/mnt/data/X_2526.npy", X_2526)
+        # Squeeze-and-excite
+        se = layers.GlobalAveragePooling1D()(x)
+        se = layers.Dense(filters // 16, activation="relu")(se)
+        se = layers.Dense(filters, activation="sigmoid")(se)
+        se = layers.Reshape((1, filters))(se)
+        x = layers.multiply([x, se])
+        x = layers.Dropout(dropout_rate)(x)
+
+    x = layers.Flatten()(x)
+    x = layers.Dense(512, activation="relu")(x)
+    x = layers.Dropout(0.4)(x)
+    outputs = layers.Dense(30, activation="softmax")(x)
+
+    return keras.Model(inputs, outputs, name="CNN_SE")
+
+
+# ----------------------------------------------------------------- #
+# Training and evaluation                                         #
+# ----------------------------------------------------------------- #
+
+DATA_DIR = Path("/mnt/data")
+
+# Load preprocessed tensors
+X_train = np.load(DATA_DIR / "X_train.npy")  # shape: (17, 30, F)
+y_train = np.load(DATA_DIR / "y_train.npy")
+X_test = np.load(DATA_DIR / "X_test.npy")    # shape: (3, 30, F)
+y_test = np.load(DATA_DIR / "y_test.npy")
+X_pred = np.load(DATA_DIR / "X_2526.npy")    # shape: (30, F)
+
+# Build and compile model
+model = build_cnn_model(input_shape=(X_train.shape[1], X_train.shape[2]))
+model.compile(
+    optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+    loss="categorical_crossentropy",
+    metrics=["accuracy"],
+)
+
+# Callbacks
+callbacks = [
+    ReduceLROnPlateau(monitor="loss", factor=0.5, patience=8, verbose=1),
+    EarlyStopping(monitor="loss", patience=20, restore_best_weights=True),
+]
+
+# Train
+model.fit(
+    X_train,
+    y_train,
+    epochs=400,
+    batch_size=4,
+    verbose=2,
+    callbacks=callbacks,
+)
+
+# Evaluate on test seasons
+print("\n=== Evaluation on 2021-22 → 2023-24 ===")
+probs_test = model.predict(X_test)
+top1 = (probs_test.argmax(axis=1) == y_test.argmax(axis=1)).mean()
+top5 = np.mean([
+    label in probs.argsort()[-5:]
+    for probs, label in zip(probs_test, y_test.argmax(axis=1))
+])
+print(f"Top-1 accuracy: {top1:.2%}")
+print(f"Top-5 accuracy: {top5:.2%}")
+
+# Predict champions for 2024-25
+teams_25 = pd.read_csv(DATA_DIR / "2024-25_team_stats.csv")["TEAM_NAME"]
+probs_pred = model.predict(X_pred[None, ...])[0]
+out_df = pd.DataFrame({"TEAM_NAME": teams_25, "champ_prob": probs_pred})
+out_df.sort_values(by="champ_prob", ascending=False, inplace=True)
+out_df.to_csv(DATA_DIR / "champ_probabilities_2025.csv", index=False)
+print("\nSaved champ_probabilities_2025.csv")
