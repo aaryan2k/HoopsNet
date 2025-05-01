@@ -1,20 +1,31 @@
-import "./Stats.css"
-import Container from "react-bootstrap/Container";
+import { Box, Container, Heading } from "@chakra-ui/react";
 import StatsSelect from "./StatsSelect";
 
-const Stats = () => {
-
+export default function Stats() {
   return (
-    <div>
-        <div className="jumbotron jumbotron-results py-5">
-                <Container className="container-fluid">
-                    <h1 className="display-4 fw-bold text-white text-start">Stats</h1>
-                </Container>
-            </div>
-            <h1 className="text-2xl font-bold">Select NBA Stat</h1>
-            <StatsSelect />
-    </div>
-  )
+    <Box
+      bgImage="url('/curry.jpg')"
+      bgSize="cover"
+      bgPos="center"
+      bgRepeat="no-repeat"
+      minH="100vh"
+      color="white"
+    >
+      <Box
+        bg="rgba(0, 0, 0, 0.5)"
+        minH="100vh"
+        py={12}
+      >
+        <Container maxW="container.md" textAlign="center">
+          <Heading as="h1" size="3xl" mb={4}>
+            NBA Stat Explorer
+          </Heading>
+          <Heading as="h2" size="md" mb={8} opacity={0.8}>
+            See league-leading metrics at a glance
+          </Heading>
+          <StatsSelect />
+        </Container>
+      </Box>
+    </Box>
+  );
 }
-
-export default Stats
