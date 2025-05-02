@@ -88,7 +88,7 @@ const WestStandingsRow = ({ teamData }: { teamData: WestStandings }) => {
         <Text flex={1}>{teamData.clinchIndicator}</Text>
         <Text flex={2}>{teamData.gamesBack}</Text>
         <Text flex={2}>{teamData.record}</Text>
-        <Text flex={1}>{teamData.winPct}%</Text>
+        <Text flex={1}>{teamData.winPct}</Text>
         <Text flex={1}>{teamData.home}</Text>
         <Text flex={1}>{teamData.road}</Text>
         <Text flex={1}>{teamData.lastTen}</Text>
