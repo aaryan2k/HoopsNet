@@ -133,4 +133,4 @@ NBA API: [https://github.com/swar/nba_api](https://github.com/swar/nba_api)
 
 ## Slides
 
-Slideshow : [https://docs.google.com/presentation/d/1GmrlkiGjLExndhj34bWukSY3hZsJHOv1ZrRao54e1LY/edit?usp=sharing](https://docs.google.com/presentation/d/1GmrlkiGjLExndhj34bWukSY3hZsJHOv1ZrRao54e1LY/edit?usp=sharing)
+Slideshow: [https://docs.google.com/presentation/d/1GmrlkiGjLExndhj34bWukSY3hZsJHOv1ZrRao54e1LY/edit?usp=sharing](https://docs.google.com/presentation/d/1GmrlkiGjLExndhj34bWukSY3hZsJHOv1ZrRao54e1LY/edit?usp=sharing)
