@@ -1,89 +1,191 @@
-import "./Home.css"
-import Carousel from 'react-bootstrap/Carousel';
-import carousel1 from './mamba.jpg';
-import carousel2 from './carousel2.jpg';
-import carousel3 from './lebron.jpg';
-import carousel4 from './carousel4.jpg';
-import Container from 'react-bootstrap/Container';
-import { NavLink } from 'react-router-dom';
-import { Row, Col } from 'react-bootstrap';
+import { useState } from "react";
+import {
+  Box,
+  Flex,
+  Image,
+  Button,
+  useBreakpointValue,
+  Link,
+} from "@chakra-ui/react";
 
-const Main = () => {
+import { CrossFadeBackground } from "./CrossFadeBackground";
+
+import kobeHighlightImage from "./Highlight-transparent.png";
+import kobe1 from "./kobe_background.jpg";
+import kobe2 from "./kobe-bryant.jpg"; // second image
+import kobe3 from "./mamba-mentality.jpeg"; // second image
+
+import jordanHighlightImage from "./red-highlight.png";
+import jordan1 from "./jordan-dunking.jpg";
+import jordan2 from "./air-jordan.jpg";
+import jordan3 from "./jordan-jumper.jpg";
+
+import lebronHighlightImage from "./lebron-highlight.png";
+import lebron1 from "./lebron-dunking.jpg";
+import lebron2 from "./lebron-chalk.jpg";
+import lebron3 from "./lebron-celtics.jpg";
+
+const slides = [
+  {
+    key: 0,
+    layout: "hero",
+    heading: "See standings",
+    text: "Click below to view current NBA standings.",
+    buttonText: "See Standings",
+    link: "/standings/#standings",
+    images: [kobe1, kobe2, kobe3],
+  },
+  {
+    key: 1,
+    layout: "hero",
+    heading: "See Player Stats",
+    text: "Click below to view current player statistics.",
+    buttonText: "Player Stats",
+    link: "/standings/#stats",
+    images: [jordan1, jordan2, jordan3],
+  },
+  {
+    key: 3,
+    layout: "hero",
+    heading: "See AI Prediction",
+    text: "Click below to view current player statistics.",
+    buttonText: "Player Stats",
+    link: "/standings/#prediction",
+    images: [lebron1, lebron2, lebron3],
+  },
+];
+
+export default function Main() {
+  const [current, setCurrent] = useState(0);
+
+  const nextSlide = () => {
+    setCurrent((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const containerHeight = useBreakpointValue({ base: "auto", md: "100vh" });
+
   return (
-    <div className="home-page">
-      <Container fluid className="p-0">
-        <Carousel className="slide mb-5" >
-          <Carousel.Item>
-            <Row className="h-100 m-0">
-              {/* LEFT SIDE: centered text */}
-              <Col md={6} className="d-flex flex-column justify-content-center ps-5">
-                <h1 className="text-white">Welcome to HoopsNet</h1>
-                <p className="text-light">Click below to view current NBA standings.</p>
-                <NavLink to="/standings" className="btn btn-lg btn-warning mt-3">
-                  See Standings
-                </NavLink>
-              </Col>
+    <Box
+      position="relative"
+      overflow="hidden"
+      width="100%"
+      height={containerHeight}
+      bgColor="black"
+    >
+      {slides.map((slide, index) => (
+        <Box
+          key={slide.key}
+          display={index === current ? "block" : "none"}
+          width="100%"
+          height="100%"
+          position="relative"
+        >
+          <Box position="relative" width="100%" height="100%">
+            {/* Background container */}
+            <Box
+              position="absolute"
+              top="0"
+              left="0"
+              width="100%"
+              height="100%"
+              zIndex={0}
+            >
+              <CrossFadeBackground
+                images={slide.images ? slide.images : []}
+                duration={4000}
+                fadeTime={1000}
+              />
+            </Box>
 
-              {/* RIGHT SIDE: image */}
-              <Col md={6} className="p-0">
-                <img src={carousel1} alt="First slide" className="img-fluid" />
-              </Col>
-            </Row>
-          </Carousel.Item>
-            {/* <Carousel.Item className='carousel-item'>
-                <img
-                className="d-block w-100"
-                src={carousel2}
-                alt="Second slide"
+            {/* Centered Text Container */}
+            <Flex
+              position="absolute" // changed to absolute for full centering
+              top="50%"
+              left="50%"
+              transform="translate(-50%, -50%)"
+              zIndex={1}
+              direction="column"
+              justify="center"
+              align="center"
+              textAlign="center" // ensures text is centered inside the container
+              px={4}
+            >
+              {/* Highlight container */}
+              <Flex
+                position="relative"
+                align="center"
+                justify="center"
+                w={{ base: "300px", md: "500px" }}
+                h={{ base: "130px", md: "180px" }}
+                mb={4}
+              >
+                <Image
+                  src={
+                    slide.key === 0
+                      ? kobeHighlightImage
+                      : slide.key === 1
+                        ? jordanHighlightImage
+                        : lebronHighlightImage
+                  }
+                  alt="Highlight"
+                  objectFit="contain"
+                  w="100%"
+                  h="100%"
                 />
-                <Carousel.Caption className="text-end">
-                <h1>Standings</h1>
-                <NavLink to="/standings" className={"btn btn-lg btn-warning"} role={"button"}>Season Standings</NavLink>
-                </Carousel.Caption>
-            </Carousel.Item> */}
-            <Carousel.Item>
-            <Row className="h-100 m-0">
-              {/* LEFT SIDE: centered text */}
-              <Col md={6} className="d-flex flex-column justify-content-center ps-5">
-                <h1 className="text-white">Welcome to HoopsNet</h1>
-                <p className="text-light">Click below to view current player statistics.</p>
-                <NavLink to="/stats" className="btn btn-lg btn-warning mt-3">
-                  Player Stats
-                </NavLink>
-              </Col>
+                <Link
+                  href={slide.link}
+                  position="absolute"
+                  color="black"
+                  fontSize={{ base: "3xl", md: "5xl" }}
+                  fontWeight="bold"
+                  textAlign="center"
+                  px={4}
+                  fontFamily="cursive"
+                  _hover={{ textDecoration: "underline" }}
+                >
+                  {slide.heading}
+                </Link>
+                {/* </Text> */}
+              </Flex>
+            </Flex>
+          </Box>
+        </Box>
+      ))}
 
-              {/* RIGHT SIDE: image */}
-              <Col md={6} className="p-0">
-                <img src={carousel3} alt="Second slide" className="img-fluid" />
-              </Col>
-            </Row>
-          </Carousel.Item>
-            {/* <Carousel.Item className='carousel-item'>
-                <img
-                className="d-block w-100"
-                src={carousel3}
-                alt="Third slide"
-                />
-                <Carousel.Caption className="text-start">
-                <h1>Stats</h1>
-                <NavLink to="/stats" className={"btn btn-lg btn-success"} role={"button"}>Player Stats</NavLink>
-                </Carousel.Caption>
-            </Carousel.Item> */}
-            <Carousel.Item className='carousel-item'>
-                <img
-                className="d-block w-100"
-                src={carousel4}
-                alt="Third slide"
-                />
-                <Carousel.Caption className="text-end">
-                <h1>Prediction</h1>
-                <NavLink to="/prediction" className={"btn btn-lg btn-primary"} role={"button"}>AI Prediction</NavLink>
-                </Carousel.Caption>
-            </Carousel.Item>
-        </Carousel>
-      </Container>
-    </div>
+      {/* Navigation Arrows */}
+      <Button
+        aria-label="Previous Slide"
+        position="absolute"
+        left="10px"
+        top="50%"
+        transform="translateY(-50%)"
+        onClick={prevSlide}
+        variant="ghost"
+        color="white"
+        fontSize="2xl"
+        p={0}
+      >
+        ◀
+      </Button>
+
+      <Button
+        aria-label="Next Slide"
+        position="absolute"
+        right="10px"
+        top="50%"
+        transform="translateY(-50%)"
+        onClick={nextSlide}
+        variant="ghost"
+        color="white"
+        fontSize="2xl"
+        p={0}
+      >
+        ▶
+      </Button>
+    </Box>
   );
 }
-
-export default Main
