@@ -50,7 +50,7 @@ const LeagueStandings = () => {
   return (
     <Box p={4}>
       <Heading as="h3" size="lg" mb={4} color={"white"}>
-        West Standings
+        League Standings
       </Heading>
 
       <Flex
